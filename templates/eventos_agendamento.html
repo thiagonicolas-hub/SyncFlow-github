@@ -1,0 +1,601 @@
+{% extends "layout.html" %}
+{% block conteudo %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <div class="page-header">
+        <h2>Agendamento do evento ({{ evento.nome }})</h2>
+        <p class="page-subtitle">Gerencie agendas, datas e grupos vinculados a este evento.</p>
+    </div>
+ 
+    <div class="d-flex gap-2 mb-3 flex-wrap menu-minimal">        
+
+        <button class="btn btn-success novo" data-bs-toggle="modal" data-bs-target="#modalNovo">
+            + Nova Agenda
+        </button>
+    </div>
+</div>
+
+<div class="card shadow-sm p-4">
+    <!-- FILTROS INTELIGENTES -->
+    <div class="d-flex justify-content-between align-items-center mb-3 ">
+
+        <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+
+            <div class="search-container mb-3">
+                <label class="form-label">Buscar</label>
+                <div style="position: relative;">
+                  <i class="ph ph-magnifying-glass" style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
+                  <input type="text" name="busca" class="search-input"
+                         placeholder="Buscar por nome, responsável ou grupo..."
+                         value="{{ busca }}"
+                         style="padding-left: 28px;">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="data_inicio_de" class="form-label">Início de</label>
+                <input type="date" name="data_inicio_de" id="data_inicio_de" class="form-control filtro-input" value="{{ data_inicio_de }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Início até</label>
+                <input type="date" name="data_inicio_ate" class="form-control filtro-input"
+                       value="{{ data_inicio_ate }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Grupo</label>
+                <input type="text" name="grupo" class="form-control filtro-input"
+                       placeholder="Filtrar grupo (coluna grupo da agenda)..."
+                       value="{{ grupo_filtro }}">
+            </div>
+
+            <button class="btn btn-primary mt-3">
+                <i class=""></i> Filtrar
+            </button>
+            <a href="{{ url_for('eventos_agendamento', evento_id=evento.id) }}"
+               class="btn btn-warning mt-3">
+                Limpar
+            </a>
+
+        </form>
+    </div>
+
+    <!-- TABELA -->
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>
+                    <a href="{{ url_for('eventos_agendamento',
+                                        evento_id=evento.id,
+                                        pagina=1,
+                                        busca=busca,
+                                        data_inicio_de=data_inicio_de,
+                                        data_inicio_ate=data_inicio_ate,
+                                        grupo=grupo_filtro,
+                                        sort='nome',
+                                        dir='asc' if sort != 'nome' or direction == 'desc' else 'desc') }}"
+                       class="th-sortable">
+                        Nome da Agenda
+                        {% if sort == 'nome' %}
+                            <span class="sort-indicator">{{ '↑' if direction == 'asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>                                
+
+                <th>
+                    <a href="{{ url_for('eventos_agendamento',
+                                        evento_id=evento.id,
+                                        pagina=1,
+                                        busca=busca,
+                                        data_inicio_de=data_inicio_de,
+                                        data_inicio_ate=data_inicio_ate,
+                                        grupo=grupo_filtro,
+                                        sort='inicio',
+                                        dir='asc' if sort != 'inicio' or direction == 'desc' else 'desc') }}"
+                       class="th-sortable">
+                        Data Início
+                        {% if sort == 'inicio' %}
+                            <span class="sort-indicator">{{ '↑' if direction == 'asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>
+
+                <th>
+                    <a href="{{ url_for('eventos_agendamento',
+                                        evento_id=evento.id,
+                                        pagina=1,
+                                        busca=busca,
+                                        data_inicio_de=data_inicio_de,
+                                        data_inicio_ate=data_inicio_ate,
+                                        grupo=grupo_filtro,
+                                        sort='termino',
+                                        dir='asc' if sort != 'termino' or direction == 'desc' else 'desc') }}"
+                       class="th-sortable">
+                        Data Término
+                        {% if sort == 'termino' %}
+                            <span class="sort-indicator">{{ '↑' if direction == 'asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>
+
+                <th>
+                    <a href="{{ url_for('eventos_agendamento',
+                                        evento_id=evento.id,
+                                        pagina=1,
+                                        busca=busca,
+                                        data_inicio_de=data_inicio_de,
+                                        data_inicio_ate=data_inicio_ate,
+                                        grupo=grupo_filtro,
+                                        sort='responsavel',
+                                        dir='asc' if sort != 'responsavel' or direction == 'desc' else 'desc') }}"
+                       class="th-sortable">
+                        Responsável
+                        {% if sort == 'responsavel' %}
+                            <span class="sort-indicator">{{ '↑' if direction == 'asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>
+
+                <th>
+                    <a href="{{ url_for('eventos_agendamento',
+                                        evento_id=evento.id,
+                                        pagina=1,
+                                        busca=busca,
+                                        data_inicio_de=data_inicio_de,
+                                        data_inicio_ate=data_inicio_ate,
+                                        grupo=grupo_filtro,
+                                        sort='grupo',
+                                        dir='asc' if sort != 'grupo' or direction == 'desc' else 'desc') }}"
+                       class="th-sortable">
+                        Grupo+
+                        {% if sort == 'grupo' %}
+                            <span class="sort-indicator">{{ '↑' if direction == 'asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>
+
+                <th>Detalhes</th>
+                <th>Finalizar</th> 
+                <th>Status</th>
+                <th class="text-center colunatabela">Ações</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for a in agendas %}
+            <tr>
+                <td>{{ a.nome_agenda }}</td>
+                <td>{{ a.data_inicio or '-' }}</td>
+                <td>{{ a.data_termino or '-' }}</td>
+                <td>{{ a.responsavel or '-' }}</td>
+                <td>
+                    <a href="{{ url_for('agenda_grupos', agenda_id=a.id) }}"
+                       class="btn btn-outline-primary btn-sm plus">
+                       Incluir
+                    </a>
+                </td>               
+
+                <td>
+                    <button 
+                        type="button"
+                        class="btn btn-outline-info btn-sm js-detalhes-agenda"
+                        data-url="{{ url_for('agenda_detalhes', evento_id=evento.id, agenda_id=a.id) }}">
+                        Detalhes
+                    </button>
+                </td>
+
+                <td>
+                    {% if a.status != 'Finalizado' %}
+                        <a href="{{ url_for('finalizar_agenda', evento_id=evento.id, agenda_id=a.id) }}"
+                           class="btn btn-sm btn-outline-success">
+                           Finalizar
+                        </a>
+                    {% else %}
+                        <i class="bi bi-check-circle-fill fs-4 text-success"></i>
+                    {% endif %}
+                </td>
+
+                <td>
+                    <span class="btn btn-secondary btn-sm
+                        {% if a.status == 'Finalizado' %} bg-secondary
+                        {% elif a.status == 'Em andamento' %} bg-success
+                        {% elif a.status == 'Em aberto' %} bg-primary
+                        {% else %} bg-warning text-dark
+                        {% endif %}">
+                        {{ a.status }}
+                    </span>
+                </td>
+                
+
+                <td class="text-center">
+                    {% if a.status == 'Finalizado' and session['usuario_tipo'] != 'admin' %}
+                        <span class="text-muted">—</span>
+                    {% else %}
+                    <div class="dropdown">
+                        <button class="action-menu-btn" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+
+                            <li>
+                                {% if session['usuario_tipo'] != 'Pleno' %}
+                                    <a href="#"
+                                    class="dropdown-item js-editar-agenda"
+                                    data-id="{{ a.id }}"
+                                    data-nome="{{ a.nome_agenda }}"
+                                    data-inicio="{{ a.data_inicio or '' }}"
+                                    data-termino="{{ a.data_termino or '' }}"
+                                    data-responsavel="{{ a.responsavel or '' }}"
+                                    data-descricao="{{ a.descricao or '' }}">
+                                        <i class="ph ph-note-pencil"></i> Editar
+                                    </a>
+                                {% endif %}
+                            </li>
+
+                            <li>
+                                {% if session['usuario_tipo'] in ['Suporte', 'Master'] %}
+                                    <a href="#"
+                                    class="dropdown-item text-danger js-excluir-agenda"
+                                    data-id="{{ a.id }}"
+                                    data-nome="{{ a.nome_agenda }}">
+                                        <i class="ph ph-trash"></i> Excluir
+                                    </a>
+                                {% endif %}
+                            </li>
+
+                        </ul>
+                    </div>
+                    {% endif %}
+                </td>
+
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- PAGINAÇÃO -->
+    <div class="pagination-container">
+
+        {% if pagina > 1 %}
+            <a href="{{ url_for('eventos_agendamento',
+                                evento_id=evento.id,
+                                pagina=pagina-1,
+                                busca=busca,
+                                data_inicio_de=data_inicio_de,
+                                data_inicio_ate=data_inicio_ate,
+                                grupo=grupo_filtro,
+                                sort=sort,
+                                dir=direction) }}"
+               class="page-btn">Anterior</a>
+        {% else %}
+            <span class="page-btn disabled">Anterior</span>
+        {% endif %}
+
+        {% for p in range(1, total_paginas + 1) %}
+            <a href="{{ url_for('eventos_agendamento',
+                                evento_id=evento.id,
+                                pagina=p,
+                                busca=busca,
+                                data_inicio_de=data_inicio_de,
+                                data_inicio_ate=data_inicio_ate,
+                                grupo=grupo_filtro,
+                                sort=sort,
+                                dir=direction) }}"
+               class="page-number {% if pagina == p %}active{% endif %}">
+                {{ p }}
+            </a>
+        {% endfor %}
+
+        {% if pagina < total_paginas %}
+            <a href="{{ url_for('eventos_agendamento',
+                                evento_id=evento.id,
+                                pagina=pagina+1,
+                                busca=busca,
+                                data_inicio_de=data_inicio_de,
+                                data_inicio_ate=data_inicio_ate,
+                                grupo=grupo_filtro,
+                                sort=sort,
+                                dir=direction) }}"
+               class="page-btn">Próxima</a>
+        {% else %}
+            <span class="page-btn disabled">Próxima</span>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- MODAL NOVA AGENDA -->
+<div class="modal fade" id="modalNovo">
+    <div class="modal-dialog">
+        <div class="modal-content sixty-modal">
+
+            <form method="POST">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="ph ph-plus"></i> Novo Agendamento
+                    </h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label">Nome da Agenda</label>
+                        <input type="text" name="nome_agenda" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Responsável</label>
+                        <input type="text" name="responsavel" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Data de Início</label>
+                        <input type="date" name="data_inicio" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Descrição da Agenda</label>
+                        <textarea name="descricao" class="form-control" rows="3"
+                                  placeholder="Descreva o que será feito nesse agendamento..."></textarea>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary btn-sm">Salvar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL EDITAR AGENDA -->
+<div class="modal fade" id="modalEditar">
+    <div class="modal-dialog">
+        <div class="modal-content sixty-modal">
+
+            <form method="POST" id="formEditarAgenda">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Agendamento</h5>
+                    <button class="btn- btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label">Nome da Agenda</label>
+                        <input type="text" name="nome_agenda" id="edit_nome_agenda" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Responsável</label>
+                        <input type="text" name="responsavel" id="edit_responsavel" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Data de Início</label>
+                        <input type="date" name="data_inicio" id="edit_data_inicio" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Data de Término</label>
+                        <input type="date" name="data_termino" id="edit_data_termino" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Descrição da Agenda</label>
+                        <textarea name="descricao" id="edit_descricao" class="form-control" rows="3"></textarea>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary btn-sm">Salvar Alterações</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>                    
+                </div>                
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL EXCLUIR AGENDA -->
+<div class="modal fade" id="modalExcluir">
+    <div class="modal-dialog">
+        <div class="modal-content sixty-modal">
+
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">Excluir Agendamento</h5>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                Deseja realmente excluir a agenda <b id="excluir_nome_agenda"></b>?
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a id="btnConfirmarExcluirAgenda" class="btn btn-danger">Excluir</a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DETALHES AGENDA -->
+<div class="modal fade" id="modalDetalhes" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content sixty-modal">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes da Agenda</h5>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <dl class="row mb-2">
+                    <dt class="col-sm-3">Evento</dt>
+                    <dd class="col-sm-9" id="det_evento_nome"></dd>
+
+                    <dt class="col-sm-3">Nome da Agenda</dt>
+                    <dd class="col-sm-9" id="det_nome_agenda"></dd>
+
+                    <dt class="col-sm-3">Responsável</dt>
+                    <dd class="col-sm-9" id="det_responsavel"></dd>
+
+                    <dt class="col-sm-3">Data de Início</dt>
+                    <dd class="col-sm-3" id="det_data_inicio"></dd>
+
+                    <dt class="col-sm-3">Data de Término</dt>
+                    <dd class="col-sm-3" id="det_data_termino"></dd>
+                </dl>
+
+                <div class="mb-3">
+                    <h6>Descrição da Agenda</h6>
+                    <p id="det_descricao" class="mb-0 text-muted"></p>
+                </div>
+
+                <hr>
+
+                <h6>Grupos associados e total de participantes</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Grupo</th>
+                                <th>Participantes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="det_grupos_body">
+                            <!-- preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // EDITAR
+    document.querySelectorAll(".js-editar-agenda").forEach(function (el) {
+        el.addEventListener("click", function (e) {
+            e.preventDefault();
+
+            const id          = this.dataset.id;
+            const nome        = this.dataset.nome;
+            const inicio      = this.dataset.inicio;
+            const termino     = this.dataset.termino;
+            const responsavel = this.dataset.responsavel || "";
+            const descricao   = this.dataset.descricao || "";
+
+            document.getElementById("edit_nome_agenda").value   = nome;
+            document.getElementById("edit_data_inicio").value   = inicio || "";
+            document.getElementById("edit_data_termino").value  = termino || "";
+            document.getElementById("edit_responsavel").value   = responsavel;
+            document.getElementById("edit_descricao").value     = descricao;
+
+            document.getElementById("formEditarAgenda").action =
+                "/eventos/{{ evento.id }}/agendamento/editar/" + id;
+
+            new bootstrap.Modal(document.getElementById("modalEditar")).show();
+        });
+    });
+
+    // EXCLUIR
+    document.querySelectorAll(".js-excluir-agenda").forEach(function (el) {
+        el.addEventListener("click", function (e) {
+            e.preventDefault();
+
+            const id   = this.dataset.id;
+            const nome = this.dataset.nome;
+
+            document.getElementById("excluir_nome_agenda").innerText = nome;
+            document.getElementById("btnConfirmarExcluirAgenda").href =
+                "/eventos/{{ evento.id }}/agendamento/excluir/" + id;
+
+            new bootstrap.Modal(document.getElementById("modalExcluir")).show();
+        });
+    });
+
+    // DETALHES
+    document.querySelectorAll(".js-detalhes-agenda").forEach(function (el) {
+        el.addEventListener("click", function (e) {
+            e.preventDefault();
+
+            const url = this.dataset.url;
+
+            fetch(url)
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+
+                    const ag  = data.agenda;
+                    const grs = data.grupos || [];
+
+                    document.getElementById("det_evento_nome").innerText   = ag.evento_nome || "";
+                    document.getElementById("det_nome_agenda").innerText   = ag.nome_agenda || "";
+                    document.getElementById("det_responsavel").innerText   = ag.responsavel || "-";
+                    document.getElementById("det_data_inicio").innerText   = ag.data_inicio || "-";
+                    document.getElementById("det_data_termino").innerText  = ag.data_termino || "-";
+                    document.getElementById("det_descricao").innerText     = ag.descricao || "—";
+
+                    const tbody = document.getElementById("det_grupos_body");
+                    tbody.innerHTML = "";
+
+                    if (grs.length === 0) {
+                        const tr = document.createElement("tr");
+                        const td = document.createElement("td");
+                        td.colSpan = 2;
+                        td.classList.add("text-muted");
+                        td.innerText = "Nenhum grupo associado a esta agenda.";
+                        tr.appendChild(td);
+                        tbody.appendChild(tr);
+                    } else {
+                        grs.forEach(function (g) {
+                            const tr  = document.createElement("tr");
+                            const td1 = document.createElement("td");
+                            const td2 = document.createElement("td");
+
+                            td1.innerText = g.nome;
+                            td2.innerText = g.total_participantes;
+
+                            tr.appendChild(td1);
+                            tr.appendChild(td2);
+                            tbody.appendChild(tr);
+                        });
+                    }
+
+                    new bootstrap.Modal(document.getElementById("modalDetalhes")).show();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Erro ao carregar detalhes da agenda.");
+                });
+        });
+    });
+
+});
+</script>
+
+{% endblock %}

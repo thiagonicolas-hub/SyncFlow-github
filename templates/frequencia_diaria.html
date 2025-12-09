@@ -1,0 +1,104 @@
+{% extends "layout.html" %}
+{% block conteudo %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+    <div class="page-header">
+        <h2>Frequência Diária — Grupo {{ grupo.nome }}</h2>
+        <p class="page-subtitle">
+            Agenda: {{ grupo.nome_agenda }} — Evento: {{ grupo.evento_nome }}
+        </p>        
+    </div>
+    
+    <div class="d-flex gap-2 mb-3 flex-wrap menu-minimal">
+        <a href="{{ url_for('agenda_grupos', agenda_id=grupo.agenda_id) }}" class="navegpagina">
+            <i class="ph ph-arrow-left"></i> Voltar
+        </a>
+        
+        <a href="{{ url_for('grupo_participantes', agenda_id=grupo.agenda_id, grupo_id=grupo.id) }}" class="navegpagina">
+            <i class="ph ph-users-three"></i> Participantes
+        </a>
+    
+        <a href="{{ url_for('grupo_frequencia_diaria', agenda_id=grupo.agenda_id, grupo_id=grupo.id) }}" class="navegpagina">
+            <i class="ph ph-calendar-check"></i> Frequência Diária
+        </a>
+    
+        <a href="{{ url_for('grupo_frequencia_mensal', agenda_id=grupo.agenda_id, grupo_id=grupo.id) }}" class="navegpagina">
+            <i class="ph ph-calendar"></i> Frequência Mensal
+        </a>       
+    
+    </div>       
+      
+</div>
+
+<div class="card p-4 shadow-sm ">
+    <div class="d-flex justify-content-between align-items-center mb-3 ">
+    <!-- Seletor de data -->
+        <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+            <div class="mb-3">
+                <label class="form-label">Data da Frequência:</label>
+                <input type="date" class="form-control" name="data" value="{{ data }}">
+            </div>
+
+            <button class="btn btn-primary mt-3">
+                <i class=""></i> Filtrar
+            </button>
+            
+        </form>
+    </div>
+    <!-- TABELA DE PARTICIPANTES -->
+    <form method="POST">
+
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 10px;">
+                        <input type="checkbox" id="checkAll">
+                    </th>
+                    <th>Nome</th>
+                    <th>Grupo</th>
+                    <th>PCG</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for p in participantes %}
+                <tr>
+                    <td>
+                        <input type="checkbox" name="presenca" value="{{ p.id }}"
+                               {% if p.id in presentes_ids %}checked{% endif %}>
+                    </td>
+                    <td>{{ p.nome }}</td>
+                    <td>{{ p.grupo }}</td>
+                    <td>{{ p.pcg }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+            <tfoot>
+                <tr>
+                    <td colspan="4" class="text-end">
+                        Total de Participantes: {{ participantes|length }}
+                    </td>
+                </tr>
+            </tfoot>            
+
+        </table>
+
+        <div class="text-end mt-3">
+            <button class="btn btn-primary">
+               Salvar Frequência do Dia
+            </button>
+        </div>
+
+    </form>
+</div>
+
+<script>
+document.getElementById("checkAll").addEventListener("click", function () {
+    document.querySelectorAll("input[name='presenca']").forEach(x => {
+        x.checked = document.getElementById("checkAll").checked;
+    });
+});
+</script>
+
+{% endblock %}

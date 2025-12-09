@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block conteudo %}
+
+<h2 class="mb-3">Auditoria – Parceiros</h2>
+
+<div class="card">
+    <div class="card-body">
+
+        <table class="table table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Nome do Parceiro</th>
+                    <th>CNPJ</th>
+                    <th style="width: 160px;">Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for p in parceiros %}
+                <tr>
+                    <td>{{ p.nome }}</td>
+                    <td>{{ p.cnpj }}</td>
+                    <td>
+                        <a href="{{ url_for('auditoria_parceiro', parceiro_id=p.id) }}"
+                           class="btn btn-sm btn-primary">
+                            <i class="ph ph-eye"></i> Ver Histórico
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+
+    </div>
+</div>
+
+{% endblock %}

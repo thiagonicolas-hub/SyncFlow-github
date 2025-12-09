@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block conteudo %}
+
+<h2 class="page-title">
+    <i class="ph ph-user-gear"></i> {{ 'Novo Usuário' if modo=='novo' else 'Editar Usuário' }}
+</h2>
+
+<div class="card p-4 mt-3">
+
+<form method="POST">
+
+    <div class="mb-3">
+        <label class="form-label">Nome</label>
+        <input type="text" class="form-control" name="nome"
+               value="{{ user.nome if modo=='editar' }}"" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">E-mail</label>
+        <input type="email" class="form-control" name="email"
+               value="{{ user.email if modo=='editar' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Senha</label>
+        <input type="password" class="form-control" name="senha"
+               placeholder="{{ 'Deixar em branco para não alterar' if modo=='editar' else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Tipo</label>
+        <select class="form-select" name="tipo">
+            <option value="admin" {% if modo=='editar' and user.tipo=='admin' %}selected{% endif %}>Admin</option>
+            <option value="usuario" {% if modo=='editar' and user.tipo=='usuario' %}selected{% endif %}>Usuário</option>
+        </select>
+    </div>
+
+    <button class="btn btn-primary">Salvar</button>
+    <a href="/usuarios" class="btn btn-secondary">Cancelar</a>
+
+</form>
+
+</div>
+
+{% endblock %}

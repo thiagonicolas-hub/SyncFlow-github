@@ -1,0 +1,122 @@
+{% extends "layout.html" %}
+{% block conteudo %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+    <div class="page-header">
+        <h2>Participantes do Grupo ({{ grupo.nome }})</h2>
+        <p class="page-subtitle">
+            Agenda: {{ grupo.nome_agenda }} — Evento: {{ grupo.evento_nome }}
+        </p>
+    </div>     
+    <div class="d-flex gap-2 mb-3 flex-wrap menu-minimal">
+        <a href="{{ url_for('agenda_grupos', agenda_id=grupo.agenda_id) }}"class="navegpagina">
+            <i class="ph ph-arrow-left"></i> Voltar
+        </a>
+    
+        <a href="{{ url_for('grupo_frequencia_diaria', agenda_id=grupo.agenda_id, grupo_id=grupo.id) }}"class="navegpagina">
+            <i class="ph ph-calendar-check"></i> Frequência Diária
+        </a>
+    
+        <a href="{{ url_for('grupo_frequencia_mensal', agenda_id=grupo.agenda_id, grupo_id=grupo.id) }}"class="navegpagina">
+            <i class="ph ph-calendar"></i> Frequência Mensal
+        </a>   
+    
+    </div>      
+    
+</div>
+
+<div class="card p-4 shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-3 ">
+    <!-- FILTROS -->
+        <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+
+            <div class="search-container mb-3">
+                <label class="form-label">Filtra</label>
+                <div style="position: relative;">
+                  <i class="ph ph-magnifying-glass" style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
+                  <input type="text" name="busca" class="search-input"
+                         placeholder="Buscar por nome ou grupo..."
+                         value="{{ busca }}"
+                         style="padding-left: 28px;">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label mb-1">Grupo</label>
+                <input type="text" name="grupo" value="{{ grupo_filtro }}" class="form-control filtro-input">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label mb-1">PCG</label>
+                <input type="text" name="pcg" value="{{ pcg }}" class="form-control filtro-input">
+            </div>           
+
+            <button class="btn btn-primary mt-2">
+                <i class=""></i> Filtrar
+            </button>
+            <a href="{{ url_for('grupo_participantes', agenda_id=grupo.agenda_id, grupo_id=grupo.id) }}"
+            class="btn btn-warning mt-2">Limpar</a>
+        </form>
+    </div>
+
+    <!-- FORM SALVAR ASSOCIAÇÕES -->
+    <form method="POST">
+
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 10px;">
+                        <input type="checkbox" id="checkAll">
+                    </th>
+                    <th>Nome</th>
+                    <th>Idade</th>
+                    <th>Credencial</th>
+                    <th>Grupo</th>
+                    <th>PCG</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+        
+            <tbody>
+                {% for p in participantes %}
+                <tr>
+                    <td>
+                        <input type="checkbox" name="participante" value="{{ p.id }}"
+                               {% if p.id in ids_associados %}checked{% endif %}>
+                    </td>
+        
+                    <td>{{ p.nome }}</td>
+                    <td>{{ p.idade }}</td>
+                    <td>{{ p.credencial }}</td>
+                    <td>{{ p.grupo }}</td>
+                    <td>{{ p.pcg }}</td>
+                    <td>
+                        {% if p.status == 'Ativo' %}
+                            <span class="badge-status ativo">Ativo</span>
+                        {% else %}
+                            <span class="badge-status inativo">Inativo</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>        
+
+        <div class="text-end mt-3">
+            <button class="btn btn-primary">
+                Salvar Associações
+            </button>
+        </div>
+
+    </form>
+</div>
+
+<script>
+document.getElementById("checkAll").addEventListener("click", function () {
+    document.querySelectorAll("input[name='participante']").forEach(x => {
+        x.checked = document.getElementById("checkAll").checked;
+    });
+});
+</script>
+
+{% endblock %}

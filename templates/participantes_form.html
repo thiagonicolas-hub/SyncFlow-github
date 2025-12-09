@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+
+{% block conteudo %}
+
+<h2 class="mb-4">
+    {% if modo == "novo" %}
+        Novo Participante
+    {% else %}
+        Editar Participante
+    {% endif %}
+</h2>
+
+<div class="card p-4 shadow-sm">
+
+<form method="POST">
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" name="nome" class="form-control" required
+                   value="{{ registro.nome if registro else '' }}">
+        </div>
+
+        <div class="col-md-2 mb-3">
+            <label class="form-label">Idade</label>
+            <input type="number" name="idade" class="form-control"
+                   value="{{ registro.idade if registro else '' }}">
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Credencial</label>
+            <input type="text" name="credencial" class="form-control"
+                   value="{{ registro.credencial if registro else '' }}">
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label class="form-label">PCG</label>
+            <input type="text" name="pcg" class="form-control"
+                   value="{{ registro.pcg if registro else '' }}">
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Grupo</label>
+            <input type="text" name="grupo" class="form-control"
+                   value="{{ registro.grupo if registro else '' }}">
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="Ativo" {% if registro and registro.status == 'Ativo' %}selected{% endif %}>Ativo</option>
+                <option value="Inativo" {% if registro and registro.status == 'Inativo' %}selected{% endif %}>Inativo</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Observações</label>
+        <textarea name="observacoes" class="form-control" rows="4">{{ registro.observacoes if registro else '' }}</textarea>
+    </div>
+
+    <button class="btn btn-primary">Salvar</button>
+    <a href="/participantes" class="btn btn-secondary">Cancelar</a>
+
+</form>
+
+</div>
+
+{% endblock %}
