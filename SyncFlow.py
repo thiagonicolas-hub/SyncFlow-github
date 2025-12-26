@@ -2178,11 +2178,137 @@ def participantes_painel():
 
 @app.route("/participantes/painel/pdf")
 def participantes_painel_pdf():
-    # aqui você pode usar:
-    # WeasyPrint ou xhtml2pdf
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
 
-    html = render_template("participantes_painel_pdf.html", **dados)
-    return gerar_pdf(html, "painel_participantes.pdf")
+    usuario_nome = session.get("usuario_nome", "Usuário")
+
+    conn = get_db()
+
+    # -----------------------------
+    # DADOS DO PAINEL
+    # -----------------------------
+    total = conn.execute(
+        "SELECT COUNT(*) AS total FROM participantes"
+    ).fetchone()["total"]
+
+    ativos = conn.execute(
+        "SELECT COUNT(*) AS total FROM participantes WHERE status='Ativo'"
+    ).fetchone()["total"]
+
+    inativos = conn.execute(
+        "SELECT COUNT(*) AS total FROM participantes WHERE status='Inativo'"
+    ).fetchone()["total"]
+
+    por_grupo = conn.execute("""
+        SELECT grupo, COUNT(*) AS total
+        FROM participantes
+        GROUP BY grupo
+        ORDER BY grupo
+    """).fetchall()
+
+    por_credencial = conn.execute("""
+        SELECT credencial, COUNT(*) AS total
+        FROM participantes
+        GROUP BY credencial
+        ORDER BY credencial
+    """).fetchall()
+
+    conn.close()
+
+    # -----------------------------
+    # INICIAR PDF (ReportLab)
+    # -----------------------------
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    largura, altura = A4
+
+    # Cabeçalho (igual ao relatório)
+    pdf.setFillColorRGB(0.15, 0.15, 0.15)
+    pdf.rect(0, altura - 60, largura, 60, fill=1)
+
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.setFillColor(colors.white)
+    pdf.drawString(40, altura - 40, "Painel de Participantes")
+
+    pdf.setFillColor(colors.black)
+    pdf.line(40, altura - 70, largura - 40, altura - 70)
+
+    y = altura - 100
+
+    # -----------------------------
+    # CARDS RESUMO
+    # -----------------------------
+    TABLE_STYLE = TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e0e0e0")),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+    ])
+
+    tabela_resumo = [
+        ["Indicador", "Quantidade"],
+        ["Total de participantes", total],
+        ["Ativos", ativos],
+        ["Inativos", inativos],
+    ]
+
+    tbl = Table(tabela_resumo, colWidths=[260, 120])
+    tbl.setStyle(TABLE_STYLE)
+    tbl.wrapOn(pdf, 40, y)
+    tbl.drawOn(pdf, 40, y - (len(tabela_resumo) * 16))
+
+    y -= (len(tabela_resumo) * 16) + 30
+
+    # -----------------------------
+    # PARTICIPANTES POR GRUPO
+    # -----------------------------
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(40, y, "Participantes por Grupo")
+    y -= 15
+
+    tabela_grupos = [["Grupo", "Quantidade"]]
+    for g in por_grupo:
+        tabela_grupos.append([g["grupo"] or "Não informado", g["total"]])
+
+    tbl = Table(tabela_grupos, colWidths=[260, 120])
+    tbl.setStyle(TABLE_STYLE)
+    tbl.wrapOn(pdf, 40, y)
+    tbl.drawOn(pdf, 40, y - (len(tabela_grupos) * 14))
+
+    y -= (len(tabela_grupos) * 14) + 30
+
+    # -----------------------------
+    # PARTICIPANTES POR CREDENCIAL
+    # -----------------------------
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(40, y, "Participantes por Credencial")
+    y -= 15
+
+    tabela_cred = [["Credencial", "Quantidade"]]
+    for c in por_credencial:
+        tabela_cred.append([c["credencial"] or "Não informado", c["total"]])
+
+    tbl = Table(tabela_cred, colWidths=[260, 120])
+    tbl.setStyle(TABLE_STYLE)
+    tbl.wrapOn(pdf, 40, y)
+    tbl.drawOn(pdf, 40, y - (len(tabela_cred) * 14))
+
+    # Rodapé padrão do sistema
+    desenhar_rodape(pdf, largura, usuario_nome)
+
+    pdf.showPage()
+    pdf.save()
+
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="painel_participantes.pdf",
+        mimetype="application/pdf"
+    )
 
 # -----------------------------
 # Nova rota de exportação CSV
@@ -4290,12 +4416,21 @@ def ranking():
             "presencas": total_pres,
             "percentual": percentual
         })
+        if not ranking_lista:
+            ranking_lista.append({
+                "nome": "Nenhum dado disponível",
+                "grupo": "-",
+                "pcg": "-",
+                "presencas": 0,
+                "percentual": 0
+        })
 
     # ORDENAR
     ranking_sorted = sorted(ranking_lista, key=lambda x: x["percentual"], reverse=True)
 
-    top10 = ranking_sorted[:5]
-    bottom10 = ranking_sorted[-5:]
+    top5 = ranking_sorted[:5]
+    bottom5 = list(reversed(ranking_sorted[-5:]))
+
 
     conn.close()
 
@@ -4309,8 +4444,8 @@ def ranking():
         agenda_id=agenda_id,
         grupo_id=grupo_id,
         pcg_filtro=pcg_filtro,
-        top10=top10,
-        bottom10=bottom10,
+        top10=top5,
+        bottom10=bottom5,
         ranking=ranking_sorted
     )
 

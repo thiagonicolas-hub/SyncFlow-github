@@ -1147,7 +1147,7 @@ body.loading {
         height: 42px;
         font-size: 12.5px;
     }
-    .btn-info, .btn-warning{
+    .btn-info, .btn-warning, .btn-danger{
         padding-top: 10px;
     }
 }
@@ -1369,6 +1369,18 @@ canvas {
    KPIs – layout responsivo profissional
 ============================ */
 /* Container dos KPIs */
+.list-group-flush>.list-group-item:last-child
+ {
+    border-bottom-width: 1px;
+ }
+.kpi-row-nowrap-painel-participantes {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    width: 100%;
+    overflow: hidden; /* impede scroll fantasma */
+}
+
 .kpi-row-nowrap-painel {
     display: grid;
     grid-template-columns: repeat(5, 1fr);

@@ -10,9 +10,9 @@
         
     </div>
     <div class="gap-2 mb-3 flex-wrap menu-minimal">
-        <button type="button" class="btn btn-danger gerarpdf" onclick="baixarPDF()">
-            Gerar PDF
-        </button>
+        <a href="{{ url_for('gerar_relatorio_pdf') }}" class="novo">
+            <i class="fas fa-file-pdf"></i> PDF
+        </a>
     </div>
 
     <div class="card shadow-sm p-4">
