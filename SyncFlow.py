@@ -32,10 +32,9 @@ from email.mime.multipart import MIMEMultipart
 DB_CONFIG = {
     "host": "localhost",
     "user": "root",
-    "password": "Marvel@157",
+    "password": "ADMsuper123",
     "database": "trackflow"
 }
-
 
 # Pool de conexões (para múltiplos acessos simultâneos)
 pool = pooling.MySQLConnectionPool(
@@ -282,7 +281,7 @@ def recuperar_senha():
 
         mensagem = f"""
         <p>Olá!</p>
-        <p>Você solicitou a recuperação da sua senha no TrackFlow.</p>
+        <p>Você solicitou a recuperação da sua senha no SyncFlow.</p>
         <p>Clique no link abaixo para redefinir sua senha:</p>
 
         <p><a href="{link}" target="_blank">{link}</a></p>
@@ -292,7 +291,7 @@ def recuperar_senha():
         <p>Se você não solicitou isso, ignore este e-mail.</p>
         """
 
-        enviar_email(usuario["email"], "Recuperação de Senha - TrackFlow", mensagem)
+        enviar_email(usuario["email"], "Recuperação de Senha - SyncFlow", mensagem)
 
         flash("Enviamos um link de recuperação para seu e-mail!", "login_success")
 
@@ -318,7 +317,7 @@ def resetar_senha(token):
 
     # Verificar expiração
     import datetime
-    expira_em = datetime.datetime.strptime(dados["expira_em"], "%Y-%m-%d %H:%M:%S")
+    expira_em = dados["expira_em"]
 
     if datetime.datetime.now() > expira_em:
         conn.close()
@@ -341,7 +340,7 @@ def resetar_senha(token):
         conn.commit()
         conn.close()
 
-        flash("Senha alterada com sucesso!", "login_success")
+        flash("Senha alterada com sucesso!", "success")
         return redirect(url_for("login"))
 
     return render_template("resetar_senha.html", token=token)
@@ -349,11 +348,12 @@ def resetar_senha(token):
 def enviar_email(destino, assunto, mensagem_html):
     smtp_host = "smtp.hostinger.com"
     smtp_port = 587
-    smtp_email = "seuemail@seudominio.com.br"
-    smtp_senha = "SUA_SENHA_AQUI"
+
+    smtp_email = "noreply@synchronize.com.br"
+    smtp_senha = "Calango@2026"
 
     msg = MIMEMultipart()
-    msg["From"] = smtp_email
+    msg["From"] = "SyncFlow by Synchronize <noreply@synchronize.com.br>"
     msg["To"] = destino
     msg["Subject"] = assunto
 
@@ -2088,10 +2088,10 @@ def participantes():
         where.append("pcg LIKE %s")
         params.append(f"%{pcg_filtro}%")
 
-    where_sql = "WHERE " + " AND ".join(where) if where else ""
-
+    where_sql = "WHERE " + " AND ".join(where) if where else "" 
+   
     # =====================================================
-    # TOTAL
+    # TOTAL PARTICIPANTES
     # =====================================================
     total = conn.execute(f"""
         SELECT COUNT(*) AS c
@@ -2126,8 +2126,63 @@ def participantes():
         grupo_filtro=grupo_filtro,
         pcg_filtro=pcg_filtro,
         sort=sort,
+        total=total,
         direction=direction
     )
+
+@app.route("/participantes/painel")
+def participantes_painel():
+
+    conn = get_db()
+
+    total = conn.execute(
+        "SELECT COUNT(*) AS total FROM participantes"
+    ).fetchone()["total"]
+
+    ativos = conn.execute(
+        "SELECT COUNT(*) AS total FROM participantes WHERE status = 'Ativo'"
+    ).fetchone()["total"]
+
+    inativos = conn.execute(
+        "SELECT COUNT(*) AS total FROM participantes WHERE status = 'Inativo'"
+    ).fetchone()["total"]
+
+    credenciais = conn.execute("""
+        SELECT credencial, COUNT(*) AS total
+        FROM participantes
+        GROUP BY credencial
+    """).fetchall()
+
+    pcg = conn.execute("""
+        SELECT pcg, COUNT(*) AS total
+        FROM participantes
+        GROUP BY pcg
+    """).fetchall()
+
+    grupos = conn.execute("""
+        SELECT grupo, COUNT(*) AS total
+        FROM participantes
+        GROUP BY grupo
+        ORDER BY grupo
+    """).fetchall()
+
+    return render_template(
+        "participantes_painel.html",
+        total=total,
+        ativos=ativos,
+        inativos=inativos,
+        credenciais=credenciais,
+        pcg=pcg,
+        grupos=grupos
+    )
+
+@app.route("/participantes/painel/pdf")
+def participantes_painel_pdf():
+    # aqui você pode usar:
+    # WeasyPrint ou xhtml2pdf
+
+    html = render_template("participantes_painel_pdf.html", **dados)
+    return gerar_pdf(html, "painel_participantes.pdf")
 
 # -----------------------------
 # Nova rota de exportação CSV
@@ -2227,7 +2282,6 @@ def novo_participante():
     usuario_tipo = session["usuario_tipo"]
     parceiro_id = session["parceiro_id"]
 
-    # 🔐 Permissão correta (Senior e Pleno não podem)
     if usuario_tipo not in ["Administrador", "Master"]:
         flash("Você não tem permissão para cadastrar participantes.", "danger")
         return redirect(url_for("participantes"))
@@ -2235,51 +2289,31 @@ def novo_participante():
     conn = get_db()
 
     if request.method == "POST":
+        nome   = request.form["nome"].strip()
+        idade  = request.form.get("idade") or None
+        cred   = request.form["credencial"].strip()
+        pcg    = request.form.get("pcg") or None
+        grupo  = request.form.get("grupo") or None
+        obs    = request.form.get("observacoes", "").strip()
+        status = request.form.get("status", "Ativo")
 
-        nome = request.form["nome"].strip()
-        idade = request.form["idade"].strip()
-        cred = request.form["credencial"].strip()
-        pcg = request.form["pcg"].strip()
-        grupo = request.form["grupo"].strip()
-        obs = request.form["observacoes"].strip()
-        status = request.form["status"].strip()
-
-        # ================================
-        # VALIDAR CAMPOS OBRIGATÓRIOS
-        # ================================
         if not nome or not cred:
             flash("Nome e Credencial são obrigatórios.", "danger")
             return redirect(url_for("novo_participante"))
 
-        # ================================
-        # VALIDAR GRUPO DO PARCEIRO
-        # ================================
-        if grupo:
-            grupo_valido = conn.execute(
-                "SELECT id FROM agendas_grupos WHERE nome=%s AND parceiro_id=%s",
-                (grupo, parceiro_id)
-            ).fetchone()
-
-            if not grupo_valido:
-                flash("O grupo informado não existe no seu parceiro.", "danger")
-                return redirect(url_for("novo_participante"))
-
-        # ================================
-        # INSERÇÃO SEGURA (MYSQL %s)
-        # ================================
         conn.execute("""
             INSERT INTO participantes 
                 (nome, idade, credencial, pcg, grupo, observacoes, status, parceiro_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             nome,
-            idade or None,
+            idade,
             cred,
-            pcg or None,
-            grupo or None,
+            pcg,
+            grupo,
             obs or None,
             status,
-            parceiro_id   # 🔥 vincula corretamente ao parceiro
+            parceiro_id
         ))
 
         conn.commit()
@@ -2290,6 +2324,7 @@ def novo_participante():
 
     conn.close()
     return render_template("participantes_form.html", modo="novo")
+
 
 # -----------------------------
 # EDITAR PARTICIPANTE
@@ -2302,16 +2337,12 @@ def editar_participante(id):
     usuario_tipo = session["usuario_tipo"]
     parceiro_id = session["parceiro_id"]
 
-    # 🔐 Permissões (Senior e Pleno NÃO podem)
     if not has_permission(usuario_tipo, "edit"):
         flash("Você não tem permissão para editar participantes.", "danger")
         return redirect(url_for("participantes"))
 
     conn = get_db()
 
-    # ===================================================
-    # VALIDAR PARTICIPANTE DO PARCEIRO (MySQL %s)
-    # ===================================================
     if usuario_tipo == "Administrador":
         registro = conn.execute(
             "SELECT * FROM participantes WHERE id = %s",
@@ -2328,66 +2359,37 @@ def editar_participante(id):
         flash("Participante não encontrado ou pertence a outro parceiro.", "danger")
         return redirect(url_for("participantes"))
 
-    # ===================================================
-    # POST – EXECUTAR ATUALIZAÇÃO
-    # ===================================================
     if request.method == "POST":
+        nome   = request.form["nome"].strip()
+        idade  = request.form.get("idade") or None
+        cred   = request.form["credencial"].strip()
+        pcg    = request.form.get("pcg") or None
+        grupo  = request.form.get("grupo") or None
+        obs    = request.form.get("observacoes", "").strip()
+        status = request.form.get("status", "Ativo")
 
-        nome = request.form["nome"].strip()
-        idade = request.form["idade"].strip()
-        cred = request.form["credencial"].strip()
-        pcg = request.form["pcg"].strip()
-        grupo = request.form["grupo"].strip()
-        observacoes = request.form["observacoes"].strip()
-        status = request.form["status"].strip()
-
-        # Validação mínima
         if not nome or not cred:
             flash("Nome e credencial são obrigatórios.", "danger")
             conn.close()
             return redirect(url_for("editar_participante", id=id))
 
-        # ===================================================
-        # Validar grupo (MySQL)
-        # ===================================================
-        if grupo:
-            # Admin Global pode selecionar qualquer grupo
-            if usuario_tipo == "Administrador":
-                grupo_ok = conn.execute(
-                    "SELECT id FROM agendas_grupos WHERE nome = %s",
-                    (grupo,)
-                ).fetchone()
-            else:
-                grupo_ok = conn.execute(
-                    "SELECT id FROM agendas_grupos WHERE nome = %s AND parceiro_id = %s",
-                    (grupo, parceiro_id)
-                ).fetchone()
-
-            if not grupo_ok:
-                flash("O grupo informado não pertence ao seu parceiro.", "danger")
-                conn.close()
-                return redirect(url_for("editar_participante", id=id))
-
-        # ===================================================
-        # EXECUTAR UPDATE SEGURO (MySQL %s)
-        # ===================================================
         conn.execute("""
             UPDATE participantes
-            SET nome = %s,
-                idade = %s,
-                credencial = %s,
-                pcg = %s,
-                grupo = %s,
-                observacoes = %s,
-                status = %s
-            WHERE id = %s
+            SET nome=%s,
+                idade=%s,
+                credencial=%s,
+                pcg=%s,
+                grupo=%s,
+                observacoes=%s,
+                status=%s
+            WHERE id=%s
         """, (
             nome,
-            idade or None,
+            idade,
             cred,
-            pcg or None,
-            grupo or None,
-            observacoes or None,
+            pcg,
+            grupo,
+            obs or None,
             status,
             id
         ))
@@ -2398,9 +2400,6 @@ def editar_participante(id):
         flash("Participante atualizado com sucesso!", "success")
         return redirect(url_for("participantes"))
 
-    # ===================================================
-    # GET – EXIBIR FORMULÁRIO
-    # ===================================================
     conn.close()
     return render_template(
         "participantes_form.html",

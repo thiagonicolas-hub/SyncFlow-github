@@ -28,16 +28,22 @@
         </div>
 
         <div class="col-md-4 mb-3">
-            <label class="form-label">Credencial</label>
-            <input type="text" name="credencial" class="form-control"
-                   value="{{ registro.credencial if registro else '' }}">
+            <select name="credencial" class="form-select" required>
+                <option value="">Selecione</option>
+                <option value="CO">CO</option>
+                <option value="DC">DC</option>
+                <option value="PG">PG</option>
+            </select>
         </div>
     </div>
     <div class="row">
         <div class="col-md-4 mb-3">
             <label class="form-label">PCG</label>
-            <input type="text" name="pcg" class="form-control"
-                   value="{{ registro.pcg if registro else '' }}">
+            <select name="pcg" class="form-select" required>
+                <option value="">Selecione</option>
+                <option value="Sim">Sim</option>
+                <option value="Não">Não</option>
+            </select> 
         </div>
 
         <div class="col-md-4 mb-3">

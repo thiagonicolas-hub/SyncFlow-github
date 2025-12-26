@@ -29,38 +29,62 @@
     
 </div>
 
-<div class="card shadow-sm p-4">
+<div class="card shadow-sm p-4">   
+
+    <!-- FILTROS -->
     <div class="d-flex justify-content-between align-items-center mb-3 ">
 
-        <!-- BUSCA + FILTROS -->
         <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
 
-            <div class="search-container">
-                <i class="ph ph-magnifying-glass"></i>
-                <input type="text" name="busca" class="search-input"
-                       placeholder="Buscar nome, credencial, PCG, grupo..."
-                       value="{{ busca }}">
+            <div class="search-container mb-3">
+                <label class="form-label">Buscar</label>
+                <div style="position: relative;">
+                    <i style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
+                    <input type="text" name="busca" class="search-input"
+                           placeholder="Buscar nome..."
+                           value="{{ busca }}"
+                           style="padding-left: 28px;">
+                </div>
             </div>
 
-            <select name="status" class="form-select filtro-select">
-                <option value="">Status</option>
-                <option value="Ativo"   {% if status_filtro == 'Ativo' %}selected{% endif %}>Ativo</option>
-                <option value="Inativo" {% if status_filtro == 'Inativo' %}selected{% endif %}>Inativo</option>
-            </select>
+            <div class="mb-3">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select" style="color: rgb(109, 107, 107) !important;" >
+                    <option value="">Status</option>
+                    <option value="Ativo"   {% if status_filtro == 'Ativo' %}selected{% endif %}>Ativo</option>
+                    <option value="Inativo" {% if status_filtro == 'Inativo' %}selected{% endif %}>Inativo</option>
+                </select>
+            </div>
 
-            <input type="text" name="grupo" class="form-control filtro-input"
-                   placeholder="Grupo" value="{{ grupo_filtro }}">
+            <div class="mb-3">
+                <label class="form-label">Grupo</label>
+                <input type="text" name="grupo" class="form-control filtro-input"
+                       placeholder="Filtrar grupo..." value="{{ grupo_filtro }}">
+            </div>
 
-            <input type="text" name="pcg" class="form-control filtro-input"
-                   placeholder="PCG" value="{{ pcg_filtro }}">
+            <div class="mb-3">
+                <label class="form-label">PCG</label>
+                <input type="text" name="pcg" class="form-control filtro-input"
+                       placeholder="PCG" value="{{ pcg_filtro }}">
+            </div>
 
-            <button class="btn btn-primary">Filtrar</button>            
-                <a href="{{ url_for('participantes') }}" class="btn btn-warning">
-                    Limpar
-                </a>           
+            <button class="btn btn-primary mt-3">
+                <i class=""></i> Filtrar
+            </button>
+
+            <a href="{{ url_for('participantes') }}"
+            class="btn btn-warning mt-3">
+                Limpar
+            </a> 
+            
+            <!-- BOTÃO PAINEL -->
+            <a href="{{ url_for('participantes_painel') }}"
+                class="btn btn-info mt-3">
+                   Painel Participantes
+            </a>
+                               
         </form>
-    
-    </div>    
+    </div>         
 
     <table class="table table-hover align-middle">
         <thead>
@@ -256,9 +280,10 @@
             {% endfor %}
         </tbody>
         <tfoot>
-            <tr>
+            <tr>               
                 <td colspan="8" class="text-end">
-                    Total de Participantes: {{ dados|length }}
+                    Total de Participantes: {{ total }}
+                    (exibindo {{ dados|length }} nesta página)
                 </td>
             </tr>
         </tfoot>
@@ -340,12 +365,12 @@
   
               <div class="col-md-3 mb-3">
                   <label class="form-label">Credencial</label>
-                  <select name="credencial" class="form-select" required>
-                    <option value="">Selecione</option>
-                    <option value="CO">CO</option>
-                    <option value="DC">DC</option>
-                    <option value="PG">PG</option>
-                </select>                
+                    <select name="credencial" class="form-select" required>
+                        <option value="">Selecione</option>
+                        <option value="CO">CO</option>
+                        <option value="DC">DC</option>
+                        <option value="PG">PG</option>
+                    </select>                
               </div>
           </div>
   
@@ -353,11 +378,11 @@
   
               <div class="col-md-4 mb-3">
                   <label class="form-label">PCG</label>
-                  <select name="pcg" class="form-select" required>
-                    <option value="">Selecione</option>
-                    <option value="Sim">Sim</option>
-                    <option value="Não">Não</option>
-                </select>                
+                    <select name="pcg" class="form-select" required>
+                        <option value="">Selecione</option>
+                        <option value="Sim">Sim</option>
+                        <option value="Não">Não</option>
+                    </select>                
               </div>
   
               <div class="col-md-4 mb-3">

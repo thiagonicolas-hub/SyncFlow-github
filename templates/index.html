@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Synchronizer | Em desenvolvimento</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f172a, #1e1b4b);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 600px;
+            padding: 40px;
+
+            /* animação de entrada */
+            animation: fadeScaleIn 1.2s ease-out forwards;
+        }
+
+        .logo {
+            font-size: 42px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #c7d2fe;
+            margin-bottom: 30px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 10px 22px;
+            border-radius: 30px;
+            background: rgba(255,255,255,0.1);
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+        }
+
+        .footer {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-top: 40px;
+        }
+        .gears {
+            position: relative;
+            width: 120px;
+            height: 80px;
+            margin: 0 auto 30px;
+        }
+    
+        .gear {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 6px solid #c7d2fe;
+
+            /* animação de rotação */
+            animation: spin 4s linear infinite;
+
+            /* glow leve */
+            box-shadow:
+                0 0 10px rgba(199, 210, 254, 0.6),
+                0 0 20px rgba(199, 210, 254, 0.3);
+        }
+
+        .gear::before {
+            content: "";
+            position: absolute;
+            inset: -10px;
+            border-radius: 50%;
+            border: 6px dashed #c7d2fe;
+
+            /* glow um pouco mais suave */
+            box-shadow:
+                0 0 8px rgba(199, 210, 254, 0.4);
+        }
+
+
+    .gear.left {
+        left: 0;
+    }
+
+    .gear.right {
+        right: 0;
+        top: 20px;
+        animation-direction: reverse;
+    }
+
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    @keyframes fadeScaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="gears">
+            <div class="gear left"></div>
+            <div class="gear right"></div>
+        </div>
+        
+        <div class="logo">Synchronizer</div>
+
+        <div class="subtitle">
+            Soluções inteligentes para automação, gestão e integração de sistemas.
+        </div>
+
+        <div class="status">
+            🚧 Site em desenvolvimento
+        </div>
+
+        <div class="footer">
+            © 2025 Synchronizer · Todos os direitos reservados
+        </div>
+    </div>
+
+</body>
+</html>

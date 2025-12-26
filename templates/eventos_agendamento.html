@@ -26,7 +26,7 @@
             <div class="search-container mb-3">
                 <label class="form-label">Buscar</label>
                 <div style="position: relative;">
-                  <i class="ph ph-magnifying-glass" style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
+                  <i style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
                   <input type="text" name="busca" class="search-input"
                          placeholder="Buscar por nome, responsável ou grupo..."
                          value="{{ busca }}"
@@ -48,7 +48,7 @@
             <div class="mb-3">
                 <label class="form-label">Grupo</label>
                 <input type="text" name="grupo" class="form-control filtro-input"
-                       placeholder="Filtrar grupo (coluna grupo da agenda)..."
+                       placeholder="Filtrar grupo..."
                        value="{{ grupo_filtro }}">
             </div>
 
@@ -323,28 +323,35 @@
 
                 <div class="modal-body">
 
+                    <!-- Nome da agenda (linha inteira) -->
                     <div class="mb-3">
                         <label class="form-label">Nome da Agenda</label>
                         <input type="text" name="nome_agenda" class="form-control" required>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Responsável</label>
-                        <input type="text" name="responsavel" class="form-control" required>
+                
+                    <!-- Responsável + Data -->
+                    <div class="row mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label">Responsável</label>
+                            <input type="text" name="responsavel" class="form-control" required>
+                        </div>
+                
+                        <div class="col-md-5">
+                            <label class="form-label">Data de Início</label>
+                            <input type="date" name="data_inicio" class="form-control">
+                        </div>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Data de Início</label>
-                        <input type="date" name="data_inicio" class="form-control">
-                    </div>
-
+                
+                    <!-- Descrição -->
                     <div class="mb-3">
                         <label class="form-label">Descrição da Agenda</label>
-                        <textarea name="descricao" class="form-control" rows="3"
+                        <textarea name="descricao"
+                                  class="form-control"
+                                  rows="3"
                                   placeholder="Descreva o que será feito nesse agendamento..."></textarea>
                     </div>
-
-                </div>
+                
+                </div>                
 
                 <div class="modal-footer">
                     <button class="btn btn-primary btn-sm">Salvar</button>
@@ -381,14 +388,16 @@
                         <input type="text" name="responsavel" id="edit_responsavel" class="form-control">
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Data de Início</label>
-                        <input type="date" name="data_inicio" id="edit_data_inicio" class="form-control">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Data de Término</label>
-                        <input type="date" name="data_termino" id="edit_data_termino" class="form-control">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Data de Início</label>
+                            <input type="date" name="data_inicio" id="edit_data_inicio" class="form-control">
+                        </div>    
+                   
+                        <div class="col-md-6">
+                            <label class="form-label">Data de Término</label>
+                            <input type="date" name="data_termino" id="edit_data_termino" class="form-control">
+                        </div>    
                     </div>
 
                     <div class="mb-3">
