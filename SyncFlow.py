@@ -109,10 +109,8 @@ class DB:
         self.cur.close()
         self.conn.close()
 
-
 def get_db():
     return DB()
-
 
 def contar_admins():
     conn = get_db()
