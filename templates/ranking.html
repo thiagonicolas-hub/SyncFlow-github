@@ -59,7 +59,11 @@
 <!-- ========== TOP 05 ========== -->
 <div class="card p-3 shadow-sm mb-4">
     <h5 class="mb-3 d-flex align-items-center"><i class="ph ph-trophy trophy"></i> Top 05 – Maior frequência</h5>
-
+    <p class="text-muted">
+        Top10: {{ top10|length }} |
+        Bottom10: {{ bottom10|length }}
+    </p>
+    
     <table class="table table-hover align-middle">
         <thead>
             <tr>

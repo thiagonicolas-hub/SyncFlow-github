@@ -2947,9 +2947,16 @@ def grupo_participantes(agenda_id, grupo_id):
 
             if participante:
                 conn.execute("""
-                    INSERT INTO agendas_grupos_participantes (grupo_id, participante_id)
-                    VALUES (%s, %s)
-                """, (grupo_id, pid))
+                    INSERT INTO agendas_grupos_participantes
+                        (grupo_id, participante_id, parceiro_id)
+                    SELECT
+                        g.id,
+                        ?,
+                        a.parceiro_id
+                    FROM agendas_grupos g
+                    JOIN agendas_evento a ON a.id = g.agenda_id
+                    WHERE g.id = ?
+                """, (pid, grupo_id))
 
         conn.commit()
         conn.close()
@@ -3100,9 +3107,18 @@ def grupo_frequencia_diaria(agenda_id, grupo_id):
                 continue  # ignora IDs inválidos
 
             conn.execute("""
-                INSERT INTO frequencia_diaria (grupo_id, participante_id, data, presente)
-                VALUES (?, ?, ?, 1)
-            """, (grupo_id, pid, data))
+                INSERT INTO frequencia_diaria
+                    (grupo_id, participante_id, data, presente, parceiro_id)
+                SELECT
+                    g.id,
+                    ?,
+                    ?,
+                    1,
+                    a.parceiro_id
+                FROM agendas_grupos g
+                JOIN agendas_evento a ON a.id = g.agenda_id
+                WHERE g.id = ?
+            """, (pid, data, grupo_id))           
 
         conn.commit()
         conn.close()
@@ -3265,9 +3281,17 @@ def grupo_frequencia_mensal(agenda_id, grupo_id):
 
                     conn.execute("""
                         INSERT INTO frequencia_diaria
-                            (grupo_id, participante_id, data, presente)
-                        VALUES (?, ?, ?, 1)
-                    """, (grupo_id, p["id"], data_formatada))
+                            (grupo_id, participante_id, data, presente, parceiro_id)
+                        SELECT
+                            g.id,
+                            ?,
+                            ?,
+                            1,
+                            a.parceiro_id
+                        FROM agendas_grupos g
+                        JOIN agendas_evento a ON a.id = g.agenda_id
+                        WHERE g.id = ?
+                    """, (p["id"], data_formatada, grupo_id))
 
         conn.commit()
         flash("Frequência mensal salva com sucesso!", "success")
@@ -4233,10 +4257,11 @@ def ranking():
     grupo_id  = request.args.get("grupo")
     pcg_filtro = request.args.get("pcg")
 
-    # converter ids
     def to_int(v):
-        try: return int(v)
-        except: return None
+        try:
+            return int(v)
+        except:
+            return None
 
     evento_id = to_int(evento_id)
     agenda_id = to_int(agenda_id)
@@ -4247,13 +4272,15 @@ def ranking():
     # ==========================
     if evento_id:
         if usuario_tipo == "Administrador":
-            e = conn.execute("SELECT * FROM eventos WHERE id=%s", (evento_id,)).fetchone()
+            e = conn.execute(
+                "SELECT id FROM eventos WHERE id=?",
+                (evento_id,)
+            ).fetchone()
         else:
             e = conn.execute(
-                "SELECT * FROM eventos WHERE id=%s AND parceiro_id=%s",
+                "SELECT id FROM eventos WHERE id=? AND parceiro_id=?",
                 (evento_id, parceiro_id)
             ).fetchone()
-
         if not e:
             evento_id = None
 
@@ -4262,16 +4289,17 @@ def ranking():
     # ==========================
     if agenda_id:
         if usuario_tipo == "Administrador":
-            a = conn.execute("SELECT * FROM agendas_evento WHERE id=%s", (agenda_id,)).fetchone()
+            a = conn.execute(
+                "SELECT id, evento_id FROM agendas_evento WHERE id=?",
+                (agenda_id,)
+            ).fetchone()
         else:
             a = conn.execute(
-                "SELECT * FROM agendas_evento WHERE id=%s AND parceiro_id=%s",
+                "SELECT id, evento_id FROM agendas_evento WHERE id=? AND parceiro_id=?",
                 (agenda_id, parceiro_id)
             ).fetchone()
 
-        if not a:
-            agenda_id = None
-        elif evento_id and a["evento_id"] != evento_id:
+        if not a or (evento_id and a["evento_id"] != evento_id):
             agenda_id = None
 
     # ==========================
@@ -4279,20 +4307,21 @@ def ranking():
     # ==========================
     if grupo_id:
         if usuario_tipo == "Administrador":
-            g = conn.execute("SELECT * FROM agendas_grupos WHERE id=%s", (grupo_id,)).fetchone()
+            g = conn.execute(
+                "SELECT id, agenda_id FROM agendas_grupos WHERE id=?",
+                (grupo_id,)
+            ).fetchone()
         else:
             g = conn.execute(
-                "SELECT * FROM agendas_grupos WHERE id=%s AND parceiro_id=%s",
+                "SELECT id, agenda_id FROM agendas_grupos WHERE id=? AND parceiro_id=?",
                 (grupo_id, parceiro_id)
             ).fetchone()
 
-        if not g:
-            grupo_id = None
-        elif agenda_id and g["agenda_id"] != agenda_id:
+        if not g or (agenda_id and g["agenda_id"] != agenda_id):
             grupo_id = None
 
     # ==========================
-    # COMBOS (MYSQL + MULTIEMPRESA)
+    # COMBOS
     # ==========================
     if usuario_tipo == "Administrador":
         eventos = conn.execute(
@@ -4300,112 +4329,103 @@ def ranking():
         ).fetchall()
     else:
         eventos = conn.execute(
-            "SELECT id, nome FROM eventos WHERE parceiro_id=%s ORDER BY nome",
+            "SELECT id, nome FROM eventos WHERE parceiro_id=? ORDER BY nome",
             (parceiro_id,)
         ).fetchall()
 
     agendas = []
     if evento_id:
-        agendas = conn.execute("""
-            SELECT id, nome_agenda 
-            FROM agendas_evento 
-            WHERE evento_id=%s
-            ORDER BY nome_agenda
-        """, (evento_id,)).fetchall()
+        agendas = conn.execute(
+            "SELECT id, nome_agenda FROM agendas_evento WHERE evento_id=? ORDER BY nome_agenda",
+            (evento_id,)
+        ).fetchall()
 
     grupos = []
     if agenda_id:
-        grupos = conn.execute("""
-            SELECT id, nome 
-            FROM agendas_grupos 
-            WHERE agenda_id=%s
-            ORDER BY nome
-        """, (agenda_id,)).fetchall()
-
-    # ==========================
-    # WHERE SQL (MYSQL)
-    # ==========================
-    where = ["DATE_FORMAT(f.data, '%%Y-%%m') = %s"]
-    params = [mes]
-
-    if usuario_tipo != "Administrador":
-        where.append("a.parceiro_id = %s")
-        params.append(parceiro_id)
-
-    if evento_id:
-        where.append("a.evento_id = %s")
-        params.append(evento_id)
-
-    if agenda_id:
-        where.append("g.agenda_id = %s")
-        params.append(agenda_id)
-
-    if grupo_id:
-        where.append("g.id = %s")
-        params.append(grupo_id)
-
-    if pcg_filtro:
-        where.append("p.pcg = %s")
-        params.append(pcg_filtro)
-
-    where_sql = " AND ".join(where)
+        grupos = conn.execute(
+            "SELECT id, nome FROM agendas_grupos WHERE agenda_id=? ORDER BY nome",
+            (agenda_id,)
+        ).fetchall()
 
     # ==========================
     # PARTICIPANTES ENVOLVIDOS
     # ==========================
-    participantes_raw = conn.execute(f"""
-        SELECT DISTINCT 
-            p.id, p.nome, p.grupo, p.pcg
+    sql_part = """
+        SELECT DISTINCT p.id, p.nome, p.grupo, p.pcg
         FROM participantes p
         JOIN agendas_grupos_participantes agp ON agp.participante_id = p.id
         JOIN agendas_grupos g ON g.id = agp.grupo_id
         JOIN agendas_evento a ON a.id = g.agenda_id
-        LEFT JOIN frequencia_diaria f ON f.participante_id = p.id
-        WHERE {where_sql}
-    """, params).fetchall()
+        WHERE substr(p.id || '', 1, 1) IS NOT NULL
+    """
+    params_part = []
+
+    if usuario_tipo != "Administrador":
+        sql_part += " AND a.parceiro_id = ?"
+        params_part.append(parceiro_id)
+
+    if evento_id:
+        sql_part += " AND a.evento_id = ?"
+        params_part.append(evento_id)
+
+    if agenda_id:
+        sql_part += " AND g.agenda_id = ?"
+        params_part.append(agenda_id)
+
+    if grupo_id:
+        sql_part += " AND g.id = ?"
+        params_part.append(grupo_id)
+
+    if pcg_filtro:
+        sql_part += " AND p.pcg = ?"
+        params_part.append(pcg_filtro)
+
+    participantes_raw = conn.execute(sql_part, params_part).fetchall()
 
     ranking_lista = []
 
+    # ==========================
+    # LOOP DE CÁLCULO
+    # ==========================
     for p in participantes_raw:
         pid = p["id"]
 
-        # total de presenças no mês
+        # Total presenças no mês
         total_pres = conn.execute("""
             SELECT COUNT(*) AS c
             FROM frequencia_diaria
-            WHERE participante_id = %s
-            AND DATE_FORMAT(data, '%%Y-%%m') = %s
-        """, (pid, mes)).fetchone()["c"]
+            WHERE participante_id = ?
+              AND presente = 1
+              AND substr(data, 1, 7) = ?
+        """, (pid, mes)).fetchone()["c"] or 0
 
-        # total dias com frequência (restrito ao parceiro/evento/agenda/grupo)
+        # Total dias com frequência no contexto
         sql_dias = """
             SELECT COUNT(DISTINCT f.data) AS c
             FROM frequencia_diaria f
             JOIN agendas_grupos g ON g.id = f.grupo_id
             JOIN agendas_evento a ON a.id = g.agenda_id
-            WHERE DATE_FORMAT(f.data, '%%Y-%%m') = %s
+            WHERE substr(f.data, 1, 7) = ?
         """
-
         params_dias = [mes]
 
         if usuario_tipo != "Administrador":
-            sql_dias += " AND a.parceiro_id = %s"
+            sql_dias += " AND a.parceiro_id = ?"
             params_dias.append(parceiro_id)
 
         if evento_id:
-            sql_dias += " AND a.evento_id = %s"
+            sql_dias += " AND a.evento_id = ?"
             params_dias.append(evento_id)
 
         if agenda_id:
-            sql_dias += " AND g.agenda_id = %s"
+            sql_dias += " AND g.agenda_id = ?"
             params_dias.append(agenda_id)
 
         if grupo_id:
-            sql_dias += " AND g.id = %s"
+            sql_dias += " AND g.id = ?"
             params_dias.append(grupo_id)
 
-        dias_raw = conn.execute(sql_dias, params_dias).fetchone()["c"]
-        total_dias = dias_raw or 0
+        total_dias = conn.execute(sql_dias, params_dias).fetchone()["c"] or 0
 
         percentual = round((total_pres / total_dias) * 100, 1) if total_dias > 0 else 0
 
@@ -4416,21 +4436,27 @@ def ranking():
             "presencas": total_pres,
             "percentual": percentual
         })
-        if not ranking_lista:
-            ranking_lista.append({
-                "nome": "Nenhum dado disponível",
-                "grupo": "-",
-                "pcg": "-",
-                "presencas": 0,
-                "percentual": 0
-        })
 
-    # ORDENAR
-    ranking_sorted = sorted(ranking_lista, key=lambda x: x["percentual"], reverse=True)
+    if not ranking_lista:
+        ranking_lista = [{
+            "nome": "Nenhum dado disponível",
+            "grupo": "-",
+            "pcg": "-",
+            "presencas": 0,
+            "percentual": 0
+        }]
+
+    # ==========================
+    # ORDENAÇÃO
+    # ==========================
+    ranking_sorted = sorted(
+        ranking_lista,
+        key=lambda x: x["presencas"],
+        reverse=True
+    )
 
     top5 = ranking_sorted[:5]
-    bottom5 = list(reversed(ranking_sorted[-5:]))
-
+    bottom5 = sorted(ranking_lista, key=lambda x: x["presencas"])[:5]
 
     conn.close()
 
@@ -4448,6 +4474,7 @@ def ranking():
         bottom10=bottom5,
         ranking=ranking_sorted
     )
+
 
 @app.route("/parceiros")
 def parceiros():
