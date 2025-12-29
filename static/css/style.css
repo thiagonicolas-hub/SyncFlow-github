@@ -383,9 +383,9 @@ body {
 ====================================================== */
 
 .sixty-modal {
-    background: #202940;    
+    background: #ffffff;    
     border-radius: 14px;
-    border: 0.5px solid #3C4858;
+    border: 0.5px solid #000000be;
     box-shadow: 0 12px 40px rgba(0,0,0,0.10);
     padding: 0;
     overflow: hidden;
@@ -395,21 +395,19 @@ body {
     padding-right: 5px;
     --bs-gutter-x: 0.5rem !important;
 }
+.cep, .log{
+    width: 50%;
+}
 
 /* Cabeçalho */
 .sixty-modal .modal-header {
-    background: #1a2035;    
-    color: var(--bg-table);
-    border: 0.5px solid #3C4858;
+    background: #f4f3ef;    
+    color: #000000be;
+    border: 0.5px solid #cdcabe;
 }
 /* Botão fechar */
-.sixty-modal .btn-close {    
-    opacity: 0.7;
-    color: #ffffffbe !important;   
-}
-
-.sixty-modal .btn-close:hover {
-    opacity: 1;
+.btn-close {     
+    color: #000000be !important;   
 }
 
 /* Inputs */
@@ -417,10 +415,10 @@ body {
 .sixty-modal .form-select,
 .sixty-modal textarea {
     background: #ffffffbe;
-    border: 1px solid #ffffffbe;
+    border: 1px solid #cdcabe;
     border-radius: 10px;
     transition: .25s ease;
-    color: var(--text-main);
+    color: #cdcabe;
 }
 
 .sixty-modal .form-control:focus,
@@ -435,8 +433,8 @@ body {
 }
 /* Footer */
 .sixty-modal .modal-footer {
-    background: #1a2035; 
-    border: 0.5px solid #3C4858;
+    background: #f4f3ef; 
+    border: 0.5px solid #cdcabe;
 }
 .app-footer {
     margin-top: 30px;
@@ -444,18 +442,6 @@ body {
     font-size: 12px;
     color: #888;
     background: #f4f3ef;
-}
-
-.sixty-modal .btn-primary {
-    background: var(--primary);
-    border: none;
-    border-radius: 8px;
-    padding: 10px 18px;
-    font-weight: 600;
-}
-
-.sixty-modal .btn-primary:hover {
-    background: var(--primary-dark);
 }
 
 /* Animação de aparição (fade+slide) */
@@ -474,7 +460,7 @@ body {
 .modal-body {
     max-height: 70vh;    
     padding-right: 10px;
-    color: #ffffffbe;
+    color: #000000;
 }
 
 /* Barra de rolagem suave */
@@ -1422,5 +1408,31 @@ canvas {
 @media (max-width: 576px) {
     .kpi-row-nowrap {
         grid-template-columns: 1fr;
+    }
+}
+/* MODAL */
+/* Notebook */
+@media (max-width: 1366px) {
+    .sixty-modal .form-control, .sixty-modal .form-select, .sixty-modal textarea{
+       font-size: 13PX;
+    }
+    .form-label{
+        font-size: 13PX;
+    }
+    .modal-header, .modal-title{
+        font-size: 16px;
+    }
+    .logradouro, .cep, .nome, .nascimento,
+    .idade, .numero, .bairro, .cidade,
+    .uf, .credencial, .pcg, .grupo, .status,
+    .observacoes{
+        margin-bottom: 0px !important;
+    }
+}
+
+/* Tablet */
+@media (max-width: 992px) {
+    .kpi-row-nowrap {
+        grid-template-columns: repeat(2, 1fr);
     }
 }

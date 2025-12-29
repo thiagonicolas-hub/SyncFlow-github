@@ -4656,6 +4656,29 @@ def auditoria_parceiro(parceiro_id):
         historico=historico
     )
 
+@app.context_processor
+def inject_notificacoes():
+    if "usuario_id" not in session:
+        return {}
+
+    conn = get_db()
+    parceiro_id = session.get("parceiro_id")
+
+    notificacoes = conn.execute("""
+        SELECT id, mensagem, link
+        FROM notificacoes
+        WHERE parceiro_id = ? AND lida = 0
+        ORDER BY criada_em DESC
+        LIMIT 5
+    """, (parceiro_id,)).fetchall()
+
+    conn.close()
+
+    return {
+        "notificacoes": notificacoes,
+        "notificacoes_nao_lidas": len(notificacoes)
+    }
+
 # -----------------------------
 # Abrir navegador automaticamente
 # -----------------------------
