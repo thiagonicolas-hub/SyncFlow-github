@@ -25,6 +25,7 @@ import re
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from flask import get_flashed_messages
 
 # ==========================
 # CONFIGURAÇÃO DO MYSQL
@@ -188,6 +189,8 @@ def inject_eventos_menu():
 @app.route("/", methods=["GET", "POST"])
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    get_flashed_messages()  # consome qualquer sobra
+    
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         senha = request.form.get("senha", "").strip()
@@ -724,7 +727,7 @@ def usuarios_novo():
     conn.commit()
     conn.close()
 
-    flash("Usuário criado com sucesso!", "usuario_success")
+    flash("Usuário criado com sucesso!", "success")
     return redirect(url_for("usuarios"))
 
 
@@ -864,7 +867,7 @@ def usuarios_editar(id):
     conn.commit()
     conn.close()
 
-    flash("Usuário atualizado com sucesso!", "usuario_success")
+    flash("Usuário atualizado com sucesso!", "success")
     return redirect(url_for("usuarios"))
 
 @app.route("/usuarios/inativar/<int:id>")
@@ -1036,7 +1039,7 @@ def usuarios_excluir(id):
     conn.commit()
     conn.close()
 
-    flash("Usuário excluído com sucesso.", "usuario_success")
+    flash("Usuário excluído com sucesso.", "success")
     return redirect(url_for("usuarios"))
 
 # -----------------------------
@@ -1091,7 +1094,7 @@ def eventos_agendamento(evento_id):
 
         conn.commit()
         conn.close()
-        flash("Agendamento criado com sucesso!", "evento_success")
+        flash("Agendamento criado com sucesso!", "success")
         return redirect(url_for("eventos_agendamento", evento_id=evento_id))
 
     # ===============================
@@ -2020,7 +2023,7 @@ def eventos_agendamento_excluir(evento_id, id):
     conn.commit()
     conn.close()
 
-    flash("Agenda excluída com sucesso!", "evento_success")
+    flash("Agenda excluída com sucesso!", "success")
     return redirect(url_for("eventos_agendamento", evento_id=evento_id))
 
 # -----------------------------
@@ -2416,6 +2419,7 @@ def novo_participante():
 
     if request.method == "POST":
         nome   = request.form["nome"].strip()
+        data_nascimento = request.form.get("data_nascimento") or None
         idade  = request.form.get("idade") or None
         cred   = request.form["credencial"].strip()
         pcg    = request.form.get("pcg") or None
@@ -2423,24 +2427,26 @@ def novo_participante():
         obs    = request.form.get("observacoes", "").strip()
         status = request.form.get("status", "Ativo")
 
+        cep        = request.form.get("cep")
+        logradouro = request.form.get("logradouro")
+        numero     = request.form.get("numero")
+        bairro     = request.form.get("bairro")
+        cidade     = request.form.get("cidade")
+        uf         = request.form.get("uf")
+
         if not nome or not cred:
             flash("Nome e Credencial são obrigatórios.", "danger")
             return redirect(url_for("novo_participante"))
-
+        
         conn.execute("""
-            INSERT INTO participantes 
-                (nome, idade, credencial, pcg, grupo, observacoes, status, parceiro_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            nome,
-            idade,
-            cred,
-            pcg,
-            grupo,
-            obs or None,
-            status,
-            parceiro_id
-        ))
+            INSERT INTO participantes (
+                nome, data_nascimento, idade, credencial, pcg, grupo,
+                cep, logradouro, numero, bairro, cidade, uf,
+                observacoes, status, parceiro_id
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, ( nome, data_nascimento, idade, cred, pcg, grupo, cep, logradouro, numero,
+            bairro, cidade, uf, obs or None, status, parceiro_id ))
 
         conn.commit()
         conn.close()
@@ -2487,12 +2493,20 @@ def editar_participante(id):
 
     if request.method == "POST":
         nome   = request.form["nome"].strip()
+        data_nascimento = request.form.get("data_nascimento") or None
         idade  = request.form.get("idade") or None
         cred   = request.form["credencial"].strip()
         pcg    = request.form.get("pcg") or None
         grupo  = request.form.get("grupo") or None
         obs    = request.form.get("observacoes", "").strip()
         status = request.form.get("status", "Ativo")
+        
+        cep        = request.form.get("cep")
+        logradouro = request.form.get("logradouro")
+        numero     = request.form.get("numero")
+        bairro     = request.form.get("bairro")
+        cidade     = request.form.get("cidade")
+        uf         = request.form.get("uf")
 
         if not nome or not cred:
             flash("Nome e credencial são obrigatórios.", "danger")
@@ -2501,25 +2515,12 @@ def editar_participante(id):
 
         conn.execute("""
             UPDATE participantes
-            SET nome=%s,
-                idade=%s,
-                credencial=%s,
-                pcg=%s,
-                grupo=%s,
-                observacoes=%s,
-                status=%s
+            SET nome=%s, data_nascimento=%s, idade=%s, credencial=%s, pcg=%s, grupo=%s, cep=%s, logradouro=%s,
+                numero=%s, bairro=%s, cidade=%s, uf=%s, observacoes=%s, status=%s
             WHERE id=%s
-        """, (
-            nome,
-            idade,
-            cred,
-            pcg,
-            grupo,
-            obs or None,
-            status,
-            id
-        ))
-
+        """, ( nome, data_nascimento, idade, cred, pcg, grupo, cep, logradouro, numero, bairro,
+            cidade, uf, obs or None,  status, id ))
+        
         conn.commit()
         conn.close()
 
@@ -2655,7 +2656,7 @@ def excluir_participante(id):
     conn.commit()
     conn.close()
 
-    flash("Participante excluído com sucesso!", "participante_success")
+    flash("Participante excluído com sucesso!", "success")
     return redirect(url_for("participantes"))
 
 # ======================
@@ -2710,7 +2711,7 @@ def eventos_cadastrar():
         conn.commit()
         conn.close()
 
-        flash("Evento criado com sucesso!", "evento_success")
+        flash("Evento criado com sucesso!", "success")
         return redirect(url_for("eventos_cadastrar"))
 
     # ============================================================
@@ -2795,7 +2796,7 @@ def eventos_excluir(id):
     conn.commit()
     conn.close()
 
-    flash("Evento excluído com sucesso!", "evento_warning")
+    flash("Evento excluído com sucesso!", "success")
     return redirect(url_for("eventos_cadastrar"))
 
 # ======================
@@ -2875,7 +2876,7 @@ def eventos_editar(id):
     conn.commit()
     conn.close()
 
-    flash("Evento atualizado com sucesso!", "evento_success")
+    flash("Evento atualizado com sucesso!", "success")
     return redirect(url_for("eventos_cadastrar"))
 
 # =========================================
@@ -4525,7 +4526,7 @@ def parceiros_novo():
     conn.commit()
     conn.close()
 
-    flash("Parceiro criado com sucesso!", "parceiro_success")
+    flash("Parceiro criado com sucesso!", "success")
     return redirect(url_for("parceiros"))
 
 @app.route("/parceiros/editar/<int:id>", methods=["POST"])
@@ -4549,7 +4550,7 @@ def parceiros_editar(id):
     conn.commit()
     conn.close()
 
-    flash("Parceiro atualizado com sucesso!", "parceiro_success")
+    flash("Parceiro atualizado com sucesso!", "success")
     return redirect(url_for("parceiros"))
 
 @app.route("/parceiros/inativar/<int:id>")
@@ -4562,7 +4563,7 @@ def parceiros_inativar(id):
     conn.commit()
     conn.close()
 
-    flash("Parceiro inativado!", "parceiro_success")
+    flash("Parceiro inativado!", "success")
     return redirect(url_for("parceiros"))
 
 @app.route("/parceiros/ativar/<int:id>")
@@ -4575,7 +4576,7 @@ def parceiros_ativar(id):
     conn.commit()
     conn.close()
 
-    flash("Parceiro ativado!", "parceiro_success")
+    flash("Parceiro ativado!", "success")
     return redirect(url_for("parceiros"))
 
 @app.route("/parceiros/excluir/<int:id>")

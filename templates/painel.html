@@ -42,10 +42,11 @@
 
             <!-- Período (data inicial e final) -->
             <div id="filtro-periodo-wrapper" class="d-none">
-                <label class="form-label">Data (de / até)</label>
                 <div class="d-flex gap-2">
-                    <input type="date" class="form-control" name="data_de">
-                    <input type="date" class="form-control" name="data_ate">
+                    <label class="form-label">Início de</label>
+                    <input type="date" class="form-control data-de" name="data_de">
+                    <label class="form-label">Início até</label>
+                    <input type="date" class="form-control data-ate" name="data_ate">
                 </div>
             </div>
 
@@ -83,7 +84,7 @@
                 </select>
             </div>       
             <div class="d-flex justify-content-center">
-                <a href="/painel" class="btn btn-warning">
+                <a href="/painel" class="btn btn-warning btn-limpar">
                     Limpar
                 </a>
             </div>         

@@ -21,56 +21,129 @@
                    value="{{ registro.nome if registro else '' }}">
         </div>
 
+        <div class="col-md-4 mb-3 nascimento">
+            <label class="form-label">Nascimento</label>
+            <input type="date" name="data_nascimento" class="form-control">
+        </div>
+
         <div class="col-md-2 mb-3">
             <label class="form-label">Idade</label>
             <input type="number" name="idade" class="form-control"
                    value="{{ registro.idade if registro else '' }}">
         </div>
 
-        <div class="col-md-4 mb-3">
-            <select name="credencial" class="form-select" required>
-                <option value="">Selecione</option>
-                <option value="CO">CO</option>
-                <option value="DC">DC</option>
-                <option value="PG">PG</option>
-            </select>
+        <div class="row">
+            <div class="col-md-2 mb-3">
+                <label class="form-label">CEP</label>
+                <div class="input-group">
+                    <input type="text" id="cep" name="cep" class="form-control">
+                    <button type="button" class="btn btn-outline-secondary" onclick="buscarCEP()">Buscar</button>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3 ">
+                <label class="form-label">Logradouro</label>
+                <input type="text" id="logradouro" name="logradouro" class="form-control">
+            </div>
+            <div class="col-md-1 mb-3 ">
+                <label class="form-label">Número</label>
+                <input type="text" name="numero" class="form-control">
+            </div>
+            <div class="col-md-2 mb-3 ">
+                <label class="form-label">Bairro</label>
+                <input type="text" id="bairro" name="bairro" class="form-control">
+            </div>
+            <div class="col-md-2 mb-3 cidade">
+                <label class="form-label">Cidade</label>
+                <input type="text" id="cidade" name="cidade" class="form-control">
+            </div>
+            <div class="col-md-1 mb-3 uf">
+                <label class="form-label">UF</label>
+                <input type="text" id="uf" name="uf" class="form-control">
+            </div> 
+        </div>
+        <div class="row">            
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Grupo</label>
+                <input type="text" name="grupo" class="form-control"
+                    value="{{ registro.grupo if registro else '' }}">
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Credencial</label>
+                <select name="credencial" class="form-select" required>
+                    <option value="">Selecione</option>
+                    <option value="CO">CO</option>
+                    <option value="DC">DC</option>
+                    <option value="PG">PG</option>
+                </select>
+            </div>      
+            <div class="col-md-2 mb-3">
+                <label class="form-label">PCG</label>
+                <select name="pcg" class="form-select" required>
+                    <option value="">Selecione</option>
+                    <option value="Sim">Sim</option>
+                    <option value="Não">Não</option>
+                </select> 
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="Ativo" {% if registro and registro.status == 'Ativo' %}selected{% endif %}>Ativo</option>
+                    <option value="Inativo" {% if registro and registro.status == 'Inativo' %}selected{% endif %}>Inativo</option>
+                </select>
+            </div>
         </div>
     </div>
-    <div class="row">
-        <div class="col-md-4 mb-3">
-            <label class="form-label">PCG</label>
-            <select name="pcg" class="form-select" required>
-                <option value="">Selecione</option>
-                <option value="Sim">Sim</option>
-                <option value="Não">Não</option>
-            </select> 
-        </div>
-
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Grupo</label>
-            <input type="text" name="grupo" class="form-control"
-                   value="{{ registro.grupo if registro else '' }}">
-        </div>
-
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Status</label>
-            <select name="status" class="form-select">
-                <option value="Ativo" {% if registro and registro.status == 'Ativo' %}selected{% endif %}>Ativo</option>
-                <option value="Inativo" {% if registro and registro.status == 'Inativo' %}selected{% endif %}>Inativo</option>
-            </select>
-        </div>
-    </div>
-
     <div class="mb-3">
         <label class="form-label">Observações</label>
         <textarea name="observacoes" class="form-control" rows="4">{{ registro.observacoes if registro else '' }}</textarea>
     </div>
 
-    <button class="btn btn-primary">Salvar</button>
+    <button class="btn btn-success">Salvar</button>
     <a href="/participantes" class="btn btn-secondary">Cancelar</a>
 
 </form>
 
 </div>
+
+<script>
+    function buscarCEP() {
+        const cep = document.getElementById("cep").value.replace(/\D/g, '');
+        if (cep.length !== 8) {
+            alert("CEP inválido");
+            return;
+        }
+    
+        fetch(`https://viacep.com.br/ws/${cep}/json/`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.erro) {
+                    alert("CEP não encontrado");
+                    return;
+                }
+                document.getElementById("logradouro").value = data.logradouro || '';
+                document.getElementById("bairro").value = data.bairro || '';
+                document.getElementById("cidade").value = data.localidade || '';
+                document.getElementById("uf").value = data.uf || '';
+            });
+    }
+</script>
+
+<script>
+    const map = L.map('mapaParticipantes').setView([-14.2350, -51.9253], 4);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+    
+    const participantes = '{{ participantes_json|safe }}';
+    
+    participantes.forEach(p => {
+        if (p.lat && p.lng) {
+            L.marker([p.lat, p.lng])
+                .addTo(map)
+                .bindPopup(`<b>${p.nome}</b><br>${p.cidade}/${p.uf}`);
+        }
+    });
+</script>
 
 {% endblock %}

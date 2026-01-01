@@ -418,7 +418,7 @@ body {
     border: 1px solid #cdcabe;
     border-radius: 10px;
     transition: .25s ease;
-    color: #cdcabe;
+    color: #000000be;
 }
 
 .sixty-modal .form-control:focus,
@@ -946,8 +946,7 @@ body.loading {
     color: #8b3b3ba8;
 }
 .btn-primary,
-.btn-warning,
-.btn-danger,
+.btn-limpar,
 .btn-info{
     border-color: var(--text-secondary) !important; 
     background: transparent;
@@ -956,6 +955,12 @@ body.loading {
     height: 42px;
     text-align: center !important;
     align-items: center;
+}
+.btn-danger {
+    height: 38px;
+    text-align: center !important;
+    align-items: center;
+   
 }
 
 .bg-white,
@@ -1428,6 +1433,16 @@ canvas {
     .observacoes{
         margin-bottom: 0px !important;
     }
+    .btn-danger, .btn-secondary{
+        height: 32.75px;
+        text-align: center !important;
+        align-items: center;
+        justify-content: center;
+        display: flex;
+    }
+    .data-de, .data-ate{
+        width: 128px;
+    }
 }
 
 /* Tablet */
@@ -1435,4 +1450,10 @@ canvas {
     .kpi-row-nowrap {
         grid-template-columns: repeat(2, 1fr);
     }
+}
+
+.jq-toast-single {
+    min-width: 320px;
+    max-width: 500px;
+    text-align: center;
 }
