@@ -154,29 +154,53 @@
         {% endif %}
     {% endif %}
 
+    {% set em_notificacoes = request.endpoint == 'notificacoes_historico' %}
+
     <div class="dropdown">
-        <a href="#" class="nav-link" data-bs-toggle="dropdown">
-            <i class="fa fa-bell"></i>
-    
-            {% if notificacoes_nao_lidas|default(0) > 0 %}
-                <span class="badge bg-danger">
-                    {{ notificacoes_nao_lidas }}
-                </span>
-            {% endif %}
-        </a>
-    
-        <div class="dropdown-menu dropdown-menu-end">
-            {% for n in notificacoes %}
-                <a class="dropdown-item" href="{{ n.link }}">
-                    {{ n.mensagem }}
+
+        {% if em_notificacoes %}
+            <!-- 🔔 SINO SEM DROPDOWN -->
+            <a href="{{ url_for('notificacoes_historico') }}"
+            class="nav-link text-muted"
+            title="Você já está no histórico de notificações">
+                <i class="fa fa-bell"></i>
+            </a>
+        {% else %}
+            <!-- 🔔 SINO COM DROPDOWN -->
+            <a href="#" class="nav-link" data-bs-toggle="dropdown">
+                <i class="fa fa-bell"></i>
+
+                {% if notificacoes_nao_lidas|default(0) > 0 %}
+                    <span class="badge bg-danger">
+                        {{ notificacoes_nao_lidas }}
+                    </span>
+                {% endif %}
+            </a>
+
+            <div class="dropdown-menu dropdown-menu-end">
+
+                {% for n in notificacoes %}
+                    <a class="dropdown-item"
+                    href="{{ url_for('abrir_notificacao', id=n.id) }}">
+                        {{ n.mensagem }}
+                    </a>
+                {% else %}
+                    <span class="dropdown-item text-muted">
+                        Nenhuma notificação
+                    </span>
+                {% endfor %}
+
+                <div class="dropdown-divider"></div>
+
+                <a class="dropdown-item text-center fw-bold"
+                href="{{ url_for('notificacoes_historico') }}">
+                    Ver histórico
                 </a>
-            {% else %}
-                <span class="dropdown-item text-muted">
-                    Nenhuma notificação
-                </span>
-            {% endfor %}
-        </div>
-    </div>    
+
+            </div>
+        {% endif %}
+
+    </div>   
     
 </div>
 

@@ -196,6 +196,9 @@ def login():
         senha = request.form.get("senha", "").strip()
 
         conn = get_db()
+        gerar_notificacoes_aniversario(conn)
+        limpar_notificacoes_antigas(conn)
+
         user = conn.execute(
             "SELECT * FROM usuarios WHERE LOWER(email) = %s",
             (email,)
@@ -4679,6 +4682,104 @@ def inject_notificacoes():
         "notificacoes": notificacoes,
         "notificacoes_nao_lidas": len(notificacoes)
     }
+
+@app.route("/notificacoes/abrir/<int:id>")
+def abrir_notificacao(id):
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+    parceiro_id = session["parceiro_id"]
+
+    notif = conn.execute("""
+        SELECT id, link
+        FROM notificacoes
+        WHERE id = %s AND parceiro_id = %s
+    """, (id, parceiro_id)).fetchone()
+
+    if not notif:
+        conn.close()
+        return redirect(url_for("home"))
+
+    # marca APENAS essa notificação como lida
+    conn.execute("""
+        UPDATE notificacoes
+        SET lida = 1
+        WHERE parceiro_id = %s
+    """, (parceiro_id,))
+
+    conn.commit()
+    conn.close()
+
+    # redireciona para um local válido
+    return redirect(notif["link"] or url_for("home"))
+
+def gerar_notificacoes_aniversario(conn):
+    aniversariantes = conn.execute("""
+        SELECT id, nome, idade, parceiro_id
+        FROM participantes
+        WHERE status = 'Ativo'
+          AND data_nascimento IS NOT NULL
+          AND DAY(data_nascimento) = DAY(CURDATE())
+          AND MONTH(data_nascimento) = MONTH(CURDATE())
+    """).fetchall()
+
+    for p in aniversariantes:
+        idade = (p["idade"])
+        # evita duplicar no mesmo dia
+        ja_existe = conn.execute("""
+            SELECT 1 FROM notificacoes
+            WHERE tipo = 'aniversario'
+              AND parceiro_id = %s
+              AND mensagem LIKE %s
+              AND DATE(criada_em) = CURDATE()
+        """, (p["parceiro_id"], f"%{p['nome']}%")).fetchone()
+
+        if ja_existe:
+            continue
+
+        conn.execute("""
+            INSERT INTO notificacoes (parceiro_id, tipo, mensagem, link)
+            VALUES (%s, %s, %s, %s)
+        """, (
+            p["parceiro_id"],
+            "aniversario",
+            f"🎂 Hoje é aniversário de {idade} anos de {p['nome']}!",
+            url_for("participantes", _external=False)
+        ))
+
+    conn.commit()
+
+def limpar_notificacoes_antigas(conn):
+    conn.execute("""
+        DELETE FROM notificacoes
+        WHERE criada_em < NOW() - INTERVAL 7 DAY
+    """)
+    conn.commit()
+
+@app.route("/notificacoes")
+def notificacoes_historico():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    parceiro_id = session["parceiro_id"]
+    conn = get_db()
+
+    notificacoes = conn.execute("""
+        SELECT id, tipo, mensagem, lida, criada_em
+        FROM notificacoes
+        WHERE parceiro_id = %s
+          AND criada_em >= NOW() - INTERVAL 7 DAY
+        ORDER BY criada_em DESC
+    """, (parceiro_id,)).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "notificacoes.html",
+        notificacoes=notificacoes
+    )
 
 # -----------------------------
 # Abrir navegador automaticamente
