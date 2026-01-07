@@ -211,9 +211,12 @@
                 
 
                 <td class="text-center">
-                    {% if a.status == 'Finalizado' and session['usuario_tipo'] != 'admin' %}
+                    {% set pode_gerenciar_finalizada = session['usuario_tipo'] in ['Administrador', 'Master'] %}
+
+                    {% if a.status == 'Finalizado' and not pode_gerenciar_finalizada %}
                         <span class="text-muted">—</span>
                     {% else %}
+
                     <div class="dropdown">
                         <button class="action-menu-btn" data-bs-toggle="dropdown">
                             <i class="fas fa-ellipsis-v"></i>

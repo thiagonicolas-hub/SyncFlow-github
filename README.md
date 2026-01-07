@@ -23,3 +23,8 @@ OBJETIVO FINAL
 
 Exemplo da mensagem de aniversário
 🎂 Hoje é aniversário de 39 anos de Gustavo Nunes!
+-----------------------------------------------------
+Retirei a opção "<a href="{{ url_for('recuperar_senha') }}" class="forgot-link">
+            Esqueci minha senha
+        </a>"
+da pagina de login

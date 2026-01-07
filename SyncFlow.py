@@ -19,7 +19,6 @@ from werkzeug.serving import make_server
 import psutil
 import os
 import sys
-import mysql.connector
 from mysql.connector import pooling
 import re
 import smtplib
