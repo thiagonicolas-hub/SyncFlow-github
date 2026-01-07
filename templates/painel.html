@@ -7,111 +7,118 @@
         <p class="page-subtitle">
             Visão consolidada de participação e frequência
         </p>
+        
+    </div>
+    <div class="gap-2 mb-3 flex-wrap menu-minimal">
+        <a href="{{ url_for('gerar_relatorio_pdf') }}" class="novo">
+            <i class="fas fa-file-pdf"></i> PDF
+        </a>
     </div>
 
-    <form id="filtros-form" class="d-flex align-items-end gap-3 flex-wrap" onsubmit="aplicarFiltros(event)">
-        <!-- Tipo de filtro de data -->
-        <div class="me-3">
-            <label class="form-label d-block mb-1">Tipo de filtro</label>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="tipo_data" id="tipoAno" value="ano" checked>
-                <label class="form-check-label" for="tipoAno">Por ano</label>
+    <div class="card shadow-sm p-4">
+        <form id="filtros-form" class="d-flex align-items-end gap-3 flex-wrap" onsubmit="aplicarFiltros(event)">
+            <!-- Tipo de filtro de data -->
+            <div class="me-3">
+                <label class="form-label d-block mb-1">Tipo de filtro</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="tipo_data" id="tipoAno" value="ano" checked>
+                    <label class="form-check-label" for="tipoAno">Por ano</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="tipo_data" id="tipoMes" value="mes" >
+                    <label class="form-check-label" for="tipoMes">Por mês</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="tipo_data" id="tipoPeriodo" value="periodo">
+                    <label class="form-check-label" for="tipoPeriodo">Por período</label>
+                </div>            
             </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="tipo_data" id="tipoMes" value="mes" >
-                <label class="form-check-label" for="tipoMes">Por mês</label>
+
+            <!-- Mês -->
+            <div id="filtro-mes-wrapper">
+                <label class="form-label">Mês</label>
+                <input type="month" class="form-control" name="mes" value="{{ mes_atual }}">
             </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="tipo_data" id="tipoPeriodo" value="periodo">
-                <label class="form-check-label" for="tipoPeriodo">Por período</label>
-            </div>            
-        </div>
 
-        <!-- Mês -->
-        <div id="filtro-mes-wrapper">
-            <label class="form-label">Mês</label>
-            <input type="month" class="form-control" name="mes" value="{{ mes_atual }}">
-        </div>
-
-        <!-- Período (data inicial e final) -->
-        <div id="filtro-periodo-wrapper" class="d-none">
-            <label class="form-label">Data (de / até)</label>
-            <div class="d-flex gap-2">
-                <input type="date" class="form-control" name="data_de">
-                <input type="date" class="form-control" name="data_ate">
+            <!-- Período (data inicial e final) -->
+            <div id="filtro-periodo-wrapper" class="d-none">
+                <div class="d-flex gap-2">
+                    <label class="form-label">Início de</label>
+                    <input type="date" class="form-control data-de" name="data_de">
+                    <label class="form-label">Início até</label>
+                    <input type="date" class="form-control data-ate" name="data_ate">
+                </div>
             </div>
-        </div>
 
-        <!-- Ano -->
-        <div id="filtro-ano-wrapper" class="d-none">
-            <label class="form-label">Ano</label>
-            <input type="number" class="form-control" name="ano" min="2000" max="2100"
-                   value="{{ mes_atual[:4] }}">
-        </div>
+            <!-- Ano -->
+            <div id="filtro-ano-wrapper" class="d-none">
+                <label class="form-label">Ano</label>
+                <input type="number" class="form-control" name="ano" min="2000" max="2100"
+                    value="{{ mes_atual[:4] }}">
+            </div>
 
-        <!-- Evento -->
-        <div>
-            <label class="form-label">Evento</label>
-            <select name="evento" id="filtro-evento" class="form-select">
-                <option value="">Todos</option>
-                {% for e in eventos %}
-                    <option value="{{ e.id }}">{{ e.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
+            <!-- Evento -->
+            <div>
+                <label class="form-label">Evento</label>
+                <select name="evento" id="filtro-evento" class="form-select evento">
+                    <option value="">Todos</option>
+                    {% for e in eventos %}
+                        <option value="{{ e.id }}">{{ e.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-        <!-- Agenda (depende do intervalo + evento) -->
-        <div>
-            <label class="form-label">Agenda</label>
-            <select name="agenda" id="filtro-agenda" class="form-select">
-                <option value="">Todas</option>
-            </select>
-        </div>
+            <!-- Agenda (depende do intervalo + evento) -->
+            <div>
+                <label class="form-label">Agenda</label>
+                <select name="agenda" id="filtro-agenda" class="form-select">
+                    <option value="">Todas</option>
+                </select>
+            </div>
 
-        <!-- Grupo (depende de agenda) -->
-        <div>
-            <label class="form-label">Grupo</label>
-            <select name="grupo" id="filtro-grupo" class="form-select">
-                <option value="">Todos</option>
-            </select>
-        </div>       
-        <a href="{{ url_for('painel') }}" class="btn btn-warning">
-            Limpar
-        </a>
-        <button type="button" class="btn btn-danger" onclick="baixarPDF()">
-            Gerar PDF
-        </button>
-        
-    </form>
+            <!-- Grupo (depende de agenda) -->
+            <div>
+                <label class="form-label">Grupo</label>
+                <select name="grupo" id="filtro-grupo" class="form-select">
+                    <option value="">Todos</option>
+                </select>
+            </div>       
+            <div class="d-flex justify-content-center">
+                <a href="/painel" class="btn btn-warning btn-limpar">
+                    Limpar
+                </a>
+            </div>         
+        </form>
+    </div>    
 </div>
 
 <!-- ===================== CARDS RESUMO ===================== -->
-<div class="kpi-row-nowrap mb-4">
+<div class="kpi-row-nowrap-painel mb-4">
 
     <!-- Total participantes (cadastro geral) -->
     <div class="kpi-card">
-        <div class="card p-3 shadow-sm h-100">
+        <div class="card p-3 shadow-sm h-100 mt-3 mt-md-0">
             
             <span class="text-muted small mb-1">Participantes (total geral)</span>
             <h3 class="mb-0">
                 {{ total_participantes|default(0, true) }}                
             </h3>
             <div class="big-icon"><i class="ph ph-users"></i></div>
-            <p class="text-muted small mb-0">
-                Todos os participantes do cadastro geral
+            <p class="card-kpi-sub">
+                Todos os participantes
             </p>
         </div>
     </div>
 
     <!-- Participantes Ativos (cadastro geral) -->
     <div class="kpi-card">
-        <div class="card p-3 shadow-sm h-100">
+        <div class="card p-3 shadow-sm h-100 mt-3 mt-md-0">
             <span class="text-muted small mb-1">Participantes Ativos</span>
             <h3 class="mb-0">
                 {{ ativos|default(0, true) }}                
             </h3>
             <div class="big-icon"><i class="ph ph-check-circle"></i></div>
-            <p class="text-muted small mb-0">
+            <p class="card-kpi-sub">
                 Cadastro geral (global)
             </p>
         </div>
@@ -119,13 +126,13 @@
 
     <!-- Participantes Inativos (cadastro geral) -->
     <div class="kpi-card">
-        <div class="card p-3 shadow-sm h-100">
+        <div class="card p-3 shadow-sm h-100 mt-3 mt-md-0">
             <span class="text-muted small mb-1">Participantes Inativos</span>
             <h3 class="mb-0">
                 {{ inativos|default(0, true) }}
             </h3>            
             <div class="big-icon"><i class="ph ph-x-circle"></i></div>
-            <p class="text-muted small mb-0">
+            <p class="card-kpi-sub">
                 Cadastro geral (global)
             </p>
         </div>
@@ -133,13 +140,13 @@
 
     <!-- Total de agendas (período + filtros) -->
     <div class="kpi-card">
-        <div class="card p-3 shadow-sm h-100">
+        <div class="card p-3 shadow-sm h-100 mt-3 mt-md-0">
             <span class="text-muted small mb-1">Total de agendas</span>
             <h3 class="mb-0" id="card-total-agendas"> 
                 0                             
             </h3>
             <div class="big-icon"><i class="ph ph-list-checks"></i></div>
-            <p class="text-muted small mb-0">
+            <p class="card-kpi-sub">
                 Ano/Mês/Período, Evento
             </p>
         </div>
@@ -153,7 +160,7 @@
                 0                
             </h3>
             <div class="big-icon"><i class="ph ph-users-four"></i></div>
-            <p class="text-muted small mb-0">
+            <p class="card-kpi-sub">
                 Ano/Mês/Período, Evento, Agenda e Grupo
             </p>
         </div>
@@ -544,5 +551,4 @@ function baixarPDF() {
 }
 
 </script>
-
 {% endblock %}

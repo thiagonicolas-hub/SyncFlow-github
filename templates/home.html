@@ -2,16 +2,11 @@
 {% block conteudo %}
 
 <!-- ========== BANNER ========== -->
-<div class="card banner-home shadow-sm mb-4">
-    <div class="banner-left">
-        <div class="banner-icon">
-            <i class="ph ph-arrows-clockwise"></i>
-        </div>
-        <div>
-            <h2>Bem-vindo ao Synchronize</h2>
-            <p>{{ mensagem_dia }}</p>
-        </div>
-    </div>
+<div class="page-header mb-4">
+    <h2>Dashboard</h2>
+    <p class="page-subtitle">
+        Visão geral de programas, eventos e frequência
+    </p>
 </div>
 
 <!-- ========== CARDS DE KPIs (todos na mesma linha) ========== -->
@@ -203,5 +198,4 @@ document.addEventListener("DOMContentLoaded", function () {
     renderSparkline("spark-agenda", agenda, labels);
 });
 </script>
-
 {% endblock %}

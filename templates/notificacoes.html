@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block conteudo %}
+
+<div class="page-header mb-3">
+    <h2>Histórico de Notificações</h2>
+    <p class="page-subtitle">
+        Últimos 7 dias
+    </p>
+</div>
+
+<div class="card shadow-sm p-4">
+
+    {% if notificacoes %}
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Mensagem</th>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                    <th>Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for n in notificacoes %}
+                <tr class="{% if not n.lida %}fw-bold{% endif %}">
+                    <td>{{ n.mensagem }}</td>
+                    <td>{{ n.tipo }}</td>
+                    <td>
+                        {% if n.lida %}
+                            <span class="badge bg-secondary">Lida</span>
+                        {% else %}
+                            <span class="badge bg-success">Nova</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ n.criada_em.strftime("%d/%m/%Y %H:%M") }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="text-muted text-center">
+            Nenhuma notificação nos últimos 7 dias.
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -33,7 +33,7 @@
             <div class="search-container mb-3">
                 <label class="form-label">Filtra</label>
                 <div style="position: relative;">
-                  <i class="ph ph-magnifying-glass" style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
+                  <i style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
                   <input type="text" name="busca" class="search-input"
                          placeholder="Buscar por nome ou grupo..."
                          value="{{ busca }}"
@@ -55,7 +55,7 @@
                 <i class=""></i> Filtrar
             </button>
             <a href="{{ url_for('grupo_participantes', agenda_id=grupo.agenda_id, grupo_id=grupo.id) }}"
-            class="btn btn-warning mt-2">Limpar</a>
+            class="btn btn-warning btn-limpar mt-2">Limpar</a>
         </form>
     </div>
 
@@ -118,5 +118,4 @@ document.getElementById("checkAll").addEventListener("click", function () {
     });
 });
 </script>
-
 {% endblock %}

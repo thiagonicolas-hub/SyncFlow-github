@@ -26,7 +26,7 @@
             <div class="search-container mb-3">
                 <label class="form-label">Buscar</label>
                 <div style="position: relative;">
-                  <i class="ph ph-magnifying-glass" style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
+                  <i style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
                   <input type="text" name="busca" class="search-input"
                          placeholder="Buscar por nome, responsável ou grupo..."
                          value="{{ busca }}"
@@ -48,7 +48,7 @@
             <div class="mb-3">
                 <label class="form-label">Grupo</label>
                 <input type="text" name="grupo" class="form-control filtro-input"
-                       placeholder="Filtrar grupo (coluna grupo da agenda)..."
+                       placeholder="Filtrar grupo..."
                        value="{{ grupo_filtro }}">
             </div>
 
@@ -56,7 +56,7 @@
                 <i class=""></i> Filtrar
             </button>
             <a href="{{ url_for('eventos_agendamento', evento_id=evento.id) }}"
-               class="btn btn-warning mt-3">
+               class="btn btn-warning btn-limpar mt-3">
                 Limpar
             </a>
 
@@ -211,9 +211,12 @@
                 
 
                 <td class="text-center">
-                    {% if a.status == 'Finalizado' and session['usuario_tipo'] != 'admin' %}
+                    {% set pode_gerenciar_finalizada = session['usuario_tipo'] in ['Administrador', 'Master'] %}
+
+                    {% if a.status == 'Finalizado' and not pode_gerenciar_finalizada %}
                         <span class="text-muted">—</span>
                     {% else %}
+
                     <div class="dropdown">
                         <button class="action-menu-btn" data-bs-toggle="dropdown">
                             <i class="fas fa-ellipsis-v"></i>
@@ -318,36 +321,44 @@
                     <h5 class="modal-title">
                         <i class="ph ph-plus"></i> Novo Agendamento
                     </h5>
-                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
                 </div>
 
                 <div class="modal-body">
 
+                    <!-- Nome da agenda (linha inteira) -->
                     <div class="mb-3">
                         <label class="form-label">Nome da Agenda</label>
                         <input type="text" name="nome_agenda" class="form-control" required>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Responsável</label>
-                        <input type="text" name="responsavel" class="form-control" required>
+                
+                    <!-- Responsável + Data -->
+                    <div class="row mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label">Responsável</label>
+                            <input type="text" name="responsavel" class="form-control" required>
+                        </div>
+                
+                        <div class="col-md-5">
+                            <label class="form-label">Data de Início</label>
+                            <input type="date" name="data_inicio" class="form-control">
+                        </div>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Data de Início</label>
-                        <input type="date" name="data_inicio" class="form-control">
-                    </div>
-
+                
+                    <!-- Descrição -->
                     <div class="mb-3">
                         <label class="form-label">Descrição da Agenda</label>
-                        <textarea name="descricao" class="form-control" rows="3"
+                        <textarea name="descricao"
+                                  class="form-control"
+                                  rows="3"
+                                  style="resize: none;"
                                   placeholder="Descreva o que será feito nesse agendamento..."></textarea>
                     </div>
-
-                </div>
+                
+                </div>                
 
                 <div class="modal-footer">
-                    <button class="btn btn-primary btn-sm">Salvar</button>
+                    <button class="btn btn-success">Salvar</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 </div>
 
@@ -366,7 +377,7 @@
 
                 <div class="modal-header">
                     <h5 class="modal-title">Editar Agendamento</h5>
-                    <button class="btn- btn-close-white" data-bs-dismiss="modal"></button>
+                    <button class="btn- btn-close" data-bs-dismiss="modal"></button>
                 </div>
 
                 <div class="modal-body">
@@ -381,25 +392,27 @@
                         <input type="text" name="responsavel" id="edit_responsavel" class="form-control">
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Data de Início</label>
-                        <input type="date" name="data_inicio" id="edit_data_inicio" class="form-control">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Data de Término</label>
-                        <input type="date" name="data_termino" id="edit_data_termino" class="form-control">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Data de Início</label>
+                            <input type="date" name="data_inicio" id="edit_data_inicio" class="form-control">
+                        </div>    
+                   
+                        <div class="col-md-6">
+                            <label class="form-label">Data de Término</label>
+                            <input type="date" name="data_termino" id="edit_data_termino" class="form-control">
+                        </div>    
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Descrição da Agenda</label>
-                        <textarea name="descricao" id="edit_descricao" class="form-control" rows="3"></textarea>
+                        <textarea name="descricao" id="edit_descricao" class="form-control" style="resize: none;" rows="3"></textarea>
                     </div>
 
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-primary btn-sm">Salvar Alterações</button>
+                    <button class="btn btn-success">Salvar Alterações</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         Cancelar
                     </button>                    
@@ -418,7 +431,7 @@
 
             <div class="modal-header">
                 <h5 class="modal-title text-danger">Excluir Agendamento</h5>
-                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
             </div>
 
             <div class="modal-body">
@@ -440,7 +453,7 @@
         <div class="modal-content sixty-modal">
             <div class="modal-header">
                 <h5 class="modal-title">Detalhes da Agenda</h5>
-                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
 

@@ -27,7 +27,7 @@
             <div class="search-container mb-3">
                 <label class="form-label">Buscar</label>
                 <div style="position: relative;">
-                  <i class="ph ph-magnifying-glass" style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
+                  <i style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
                   <input type="text" name="busca" class="search-input"
                          placeholder="Buscar por nome ou grupo..."
                          value="{{ busca }}"
@@ -39,7 +39,7 @@
                 <i class=""></i> Filtrar
             </button>
             <a href="{{ url_for('agenda_grupos', agenda_id=agenda.id) }}"
-            class="btn btn-warning mt-3">Limpar</a>            
+            class="btn btn-warning btn-limpar mt-3">Limpar</a>            
         </form>
     </div>
 
@@ -146,7 +146,6 @@
 
 </div>
 
-
 <!-- MODAL NOVO GRUPO -->
 <div class="modal fade" id="modalNovoGrupo">
     <div class="modal-dialog">
@@ -156,7 +155,7 @@
 
                 <div class="modal-header">
                     <h5 class="modal-title"><i class="ph ph-plus"></i> Novo Grupo</h5>
-                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
                 </div>
 
                 <div class="modal-body">
@@ -169,7 +168,7 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-primary btn-sm">Salvar</button>
+                    <button class="btn btn-success">Salvar</button>
                     <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 </div>
 
@@ -186,7 +185,7 @@
 
             <div class="modal-header">
                 <h5 class="modal-title">Detalhes do Grupo</h5>
-                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
             </div>
 
             <div class="modal-body">
@@ -218,7 +217,7 @@
 
                 <div class="modal-header">
                     <h5 class="modal-title">Editar Grupo</h5>
-                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
                 </div>
 
                 <div class="modal-body">
@@ -230,11 +229,11 @@
 
                 </div>
 
-                <div class="modal-footer">
+                <div class="modal-footer">                    
+                    <button class="btn btn-success">Salvar Alterações</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         Cancelar
                     </button>
-                    <button class="btn btn-primary">Salvar Alterações</button>
                 </div>                
 
             </form>
@@ -251,7 +250,7 @@
 
             <div class="modal-header">
                 <h5 class="modal-title text-danger">Excluir Grupo</h5>
-                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
             </div>
 
             <div class="modal-body">

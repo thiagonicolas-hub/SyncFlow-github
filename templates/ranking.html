@@ -18,7 +18,7 @@
         <select name="evento" class="form-select" onchange="document.getElementById('form-ranking').submit()">
             <option value="">Todos</option>
             {% for e in eventos %}
-            <option value="{{ e.id }}" {% if evento_id==e.id|string %}selected{% endif %}>
+            <option value="{{ e.id }}" {% if evento_id == e.id %}selected{% endif %}>           
                 {{ e.nome }}
             </option>
             {% endfor %}
@@ -30,10 +30,11 @@
         <select name="agenda" class="form-select" onchange="document.getElementById('form-ranking').submit()">
             <option value="">Todas</option>
             {% for a in agendas %}
-            <option value="{{ a.id }}" {% if agenda_id==a.id|string %}selected{% endif %}>
+            <option value="{{ a.id }}" {% if agenda_id == a.id %}selected{% endif %}>
                 {{ a.nome_agenda }}
             </option>
             {% endfor %}
+
         </select>
     </div>
 
@@ -42,13 +43,14 @@
         <select name="grupo" class="form-select" onchange="document.getElementById('form-ranking').submit()">
             <option value="">Todos</option>
             {% for g in grupos %}
-            <option value="{{ g.id }}" {% if grupo_id==g.id|string %}selected{% endif %}>
+            <option value="{{ g.id }}" {% if grupo_id == g.id %}selected{% endif %}>
                 {{ g.nome }}
             </option>
             {% endfor %}
+
         </select>
     </div>
-    <a href="{{ url_for('ranking') }}" class="btn btn-warning">
+    <a href="{{ url_for('ranking') }}" class="btn btn-warning btn-limpar">
         Limpar
     </a> 
 
@@ -57,7 +59,11 @@
 <!-- ========== TOP 05 ========== -->
 <div class="card p-3 shadow-sm mb-4">
     <h5 class="mb-3 d-flex align-items-center"><i class="ph ph-trophy trophy"></i> Top 05 – Maior frequência</h5>
-
+    <p class="text-muted">
+        Top10: {{ top10|length }} |
+        Bottom10: {{ bottom10|length }}
+    </p>
+    
     <table class="table table-hover align-middle">
         <thead>
             <tr>
@@ -68,15 +74,24 @@
             </tr>
         </thead>
         <tbody>
-            {% for p in top10 %}
-            <tr>
-                <td>{{ p.nome }}</td>
-                <td>{{ p.grupo }}</td>
-                <td class="alinha-coluna-presenca">{{ p.presencas }}</td>
-                <td>{{ p.percentual }}%</td>
-            </tr>
-            {% endfor %}
-        </tbody>
+            {% if top10 %}
+                {% for p in top10 %}
+                <tr>
+                    <td>{{ p.nome }}</td>
+                    <td>{{ p.grupo }}</td>
+                    <td class="alinha-coluna-presenca">{{ p.presencas }}</td>
+                    <td>{{ p.percentual }}%</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">
+                        Nenhum dado encontrado para os filtros selecionados
+                    </td>
+                </tr>
+            {% endif %}
+            </tbody>
+            
     </table>
 </div>
 
@@ -149,6 +164,5 @@
             document.getElementById("form-ranking").submit();
         });
     });
-    </script>
-    
+    </script>    
 {% endblock %}

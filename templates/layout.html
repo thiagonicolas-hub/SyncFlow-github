@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Synchronize</title>
+    <title>SyncFlow</title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -16,8 +16,15 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 
     <!-- CSS do Tema -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">    
 
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- jQuery Toast -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.js"></script>
 </head>
 
 <body>
@@ -28,11 +35,11 @@
 <div class="sidebar">
 
     <div class="sidebar-title">
-        <div class="sidebar-title text-center" style="padding: 20px 0;">
-            <a href="{{ url_for('admin_home') }}" style="text-decoration:none;">
-                <img src="{{ url_for('static', filename='img/logo08.png') }}"
-                     alt="Synchronize"
-                     style="max-width:230px; display:block; margin: 6px 0 0 20px;">                   
+        <div class="sidebar-title text-center" >
+            <a href="{{ url_for('home') }}" style="text-decoration:none;">
+                <img src="{{ url_for('static', filename='img/logo09.png') }}"
+                     alt="SyncFlow"
+                     style="max-width:230px; display:block;">                   
             </a>
         </div>
     </div>
@@ -82,8 +89,7 @@
 
             <a href="/home" class="link-sidebar {% if request.endpoint == 'home' %}active{% endif %}">
                 <i class="fas fa-home"></i><span>Home</span>
-            </a>
-            
+            </a>           
 
             <!-- MENU EVENTOS COM SUBMENU -->
             <div id="menu-eventos"
@@ -107,8 +113,7 @@
                     </a>
                 {% endfor %}
             </div>
-
-
+            
             <a href="/painel" class="link-sidebar {% if request.path.startswith('/painel') %}active{% endif %}">
                 <i class="fas fa-chart-line"></i><span>Painel</span>
             </a>
@@ -148,15 +153,70 @@
             </span>
         {% endif %}
     {% endif %}
+
+    {% set em_notificacoes = request.endpoint == 'notificacoes_historico' %}
+
+    <div class="dropdown">
+
+        {% if em_notificacoes %}
+            <!-- 🔔 SINO SEM DROPDOWN -->
+            <a href="{{ url_for('notificacoes_historico') }}"
+            class="nav-link text-muted"
+            title="Você já está no histórico de notificações">
+                <i class="fa fa-bell"></i>
+            </a>
+        {% else %}
+            <!-- 🔔 SINO COM DROPDOWN -->
+            <a href="#" class="nav-link" data-bs-toggle="dropdown">
+                <i class="fa fa-bell"></i>
+
+                {% if notificacoes_nao_lidas|default(0) > 0 %}
+                    <span class="badge bg-danger">
+                        {{ notificacoes_nao_lidas }}
+                    </span>
+                {% endif %}
+            </a>
+
+            <div class="dropdown-menu dropdown-menu-end">
+
+                {% for n in notificacoes %}
+                    <a class="dropdown-item"
+                    href="{{ url_for('abrir_notificacao', id=n.id) }}">
+                        {{ n.mensagem }}
+                    </a>
+                {% else %}
+                    <span class="dropdown-item text-muted">
+                        Nenhuma notificação
+                    </span>
+                {% endfor %}
+
+                <div class="dropdown-divider"></div>
+
+                <a class="dropdown-item text-center fw-bold"
+                href="{{ url_for('notificacoes_historico') }}">
+                    Ver histórico
+                </a>
+
+            </div>
+        {% endif %}
+
+    </div>   
+    
 </div>
 
 <!-- ================================
      ÁREA DE CONTEÚDO
 ================================ -->
 <div class="content-sixtyplus">
-    {% block conteudo %}{% endblock %}
-</div>
 
+    {% block conteudo %}{% endblock %}
+
+    <!-- FOOTER -->
+    <footer class="app-footer text-center">
+        © 2025 SyncFlow · by Synchronize
+    </footer>
+
+</div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -207,8 +267,33 @@
         });
     
     });
+</script> 
+
+<script>
+    function showToast(type, message) {
+        $.toast({
+            heading: type === 'success' ? 'Sucesso' : 'Aviso',
+            text: message,
+            position: 'top-center',   // CENTRALIZADO NO TOPO
+            loaderBg: '#50b949',
+            icon: type,               // success | error | info | warning
+            hideAfter: 4000,
+            stack: 3,
+            allowToastClose: true
+        });
+    }
+</script>
+        
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <script>
+      const flashes = JSON.parse('{{ messages|tojson|safe }}');
+      flashes.forEach(([category, message]) => {
+        showToast(category, message);
+      });
     </script>
-    
-    
+  {% endif %}
+{% endwith %}
+ 
 </body>
 </html>

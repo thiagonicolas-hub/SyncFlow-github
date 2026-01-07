@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Synchronize - Redefinir Senha</title>
+    <title>SyncFlow - Redefinir Senha</title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -29,7 +29,7 @@
         }
 
         .box-reset {
-            width: 380px;
+            width: 400px;
             padding: 35px;
             background: #ffffff;
             border-radius: 14px;
@@ -54,7 +54,12 @@
             display: block;
             text-align: center;
             font-size: 14px;
-            color: #555;
+            color: #555;            
+        }
+        .subtitulo {
+            font-size: 14px;
+            color: #5f5f5f;
+            text-align: center;
             margin-bottom: 25px;
         }
 
@@ -115,11 +120,13 @@
 
 <div class="box-reset">
 
-    <!-- Header Synchronize -->
-    <div class="text-center mb-3">
-        <h1 style="color:#4c7cfc; font-weight:800; font-size:30px;">Synchronize</h1>
-        <small>Defina sua nova senha</small>
-    </div>
+    <!-- LOGO / TÍTULO -->
+    <div class="text-center" style="padding: 20px 0;">            
+        <img src="{{ url_for('static', filename='img/logo09.png') }}"
+            alt="SyncFlow"
+            style="max-width:200px; display:block; margin:0 auto 5px;">     
+            <small style="color:#616161">Redefinição de senha</small>    
+    </div>   
 
     <!-- Flash Messages -->
     {% with mensagens = get_flashed_messages(with_categories=true, category_filter=['login_success','login_warning','login_error']) %}
@@ -132,6 +139,7 @@
     {% endwith %}
 
     <h5 class="titulo">Redefinir Senha</h5>
+    <p class="subtitulo">Informe sua nova senha para redefinir.</p>
 
     <form method="POST">
 
@@ -150,6 +158,5 @@
     </form>
 
 </div>
-
 </body>
 </html>

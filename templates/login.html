@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Synchronize - Login</title>
+    <title>SyncFlow - Login</title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -28,7 +28,7 @@
         }
 
         .login-container {
-            width: 380px;
+            width: 400px;
             background: #ffffff;
             border-radius: 14px;
             padding: 35px;
@@ -130,13 +130,17 @@
         <img src="{{ url_for('static', filename='img/logo09.png') }}"
             alt="TrackFlow"
             style="max-width:200px; display:block; margin:0 auto 5px;">     
-            <small style="color:#616161">Sistema de Gestão Integrada</small>    
+            <small style="color:#616161">Sistema de Gestão de Programas, Eventos e Frequência</small>    
     </div>
 
     <!-- FLASH MESSAGES -->
-    {% with messages = get_flashed_messages() %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-        <div class="alert alert-danger">{{ messages[0] }}</div>
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}                
+            </div>
+        {% endfor %}
     {% endif %}
     {% endwith %}
 
@@ -154,10 +158,6 @@
         </div>
 
         <button class="btn-login">Entrar</button>
-
-        <a href="{{ url_for('recuperar_senha') }}" class="forgot-link">
-            Esqueci minha senha
-        </a>
     </form>
 
 </div>
