@@ -1,8 +1,7 @@
-from flask import Flask, render_template, redirect, request, session, url_for, flash, jsonify, render_template_string
+from flask import Flask, render_template, redirect, request, session, url_for, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from datetime import date
-import datetime as dt
 import webbrowser
 from threading import Timer
 import csv
@@ -20,396 +19,92 @@ from werkzeug.serving import make_server
 import psutil
 import os
 import sys
+from mysql.connector import pooling
 import re
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import get_flashed_messages
-# Compatibilidade: werkzeug 2.x tinha url_parse; werkzeug 3.x removeu.
-# --- SQLITE_COMPAT_FUNCS ---
-def _sf_parse_date(value):
-    if value is None:
-        return None
-    if isinstance(value, (dt.date, dt.datetime)):
-        return value if isinstance(value, dt.datetime) else dt.datetime.combine(value, dt.time.min)
-    s = str(value).strip()
-    if not s:
-        return None
-    # tenta formatos comuns
-    for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%d/%m/%Y", "%d/%m/%Y %H:%M:%S"):
-        try:
-            return dt.datetime.strptime(s[:19], fmt)
-        except Exception:
-            pass
-    # tenta fromisoformat (Python 3.11+ lida bem com ISO)
-    try:
-        return dt.datetime.fromisoformat(s)
-    except Exception:
-        return None
 
-def _sf_day(value):
-    d = _sf_parse_date(value)
-    return int(d.day) if d else None
-
-def _sf_month(value):
-    d = _sf_parse_date(value)
-    return int(d.month) if d else None
-
-def _sf_year(value):
-    d = _sf_parse_date(value)
-    return int(d.year) if d else None
-
-def _sf_curdate():
-    return dt.date.today().isoformat()
-
-def _sf_now():
-    return dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-def _sf_datediff(d1, d2):
-    a = _sf_parse_date(d1)
-    b = _sf_parse_date(d2)
-    if not a or not b:
-        return None
-    return int((a.date() - b.date()).days)
 try:
-    from werkzeug.urls import url_parse  # type: ignore
-except Exception:
+    # Werkzeug < 3
+    from werkzeug.urls import url_parse
+except ImportError:
+    # Werkzeug 3+ (url_parse removido)
     from urllib.parse import urlparse as url_parse
 
+
 # ==========================
-# CONFIGURAÇÃO DO APP (Flask)
+# CONFIGURAÇÃO DO MYSQL
 # ==========================
+DB_CONFIG = {
+    "host": os.getenv("DB_HOST", "localhost"),
+    "user": os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASS", "ADMsuper123"),
+    "database": os.getenv("DB_NAME", "trackflow"),
+    "port": int(os.getenv("DB_PORT", "3306")),
+}
+
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "syncflow-dev-key-change-me")  # em produção, defina via env
+app.secret_key = os.getenv("SECRET_KEY")  # em produção, NÃO tenha fallback
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     # Em HTTPS (produção), ligue:
-    SESSION_COOKIE_SECURE=(os.getenv("APP_ENV","dev") in ("prod","production")),
+    SESSION_COOKIE_SECURE=True,
 )
 
-# ==========================
-# BANCO LOCAL (SQLite)
-# ==========================
-import sqlite3
-from pathlib import Path
 
-APP_NAME = "SyncFlow"
+# Pool de conexões (para múltiplos acessos simultâneos)
+pool = pooling.MySQLConnectionPool(
+    pool_name="trackflow_pool",
+    pool_size=10,
+    **DB_CONFIG
+)
 
-def _is_frozen():
-    return getattr(sys, "frozen", False)
-
-def get_db_path() -> Path:
-    """
-    Caminho do banco SQLite.
-
-    - Em dev: ./data/syncflow.db
-    - Empacotado (EXE): ./data/syncflow.db (na mesma pasta do .exe)
-    """
-    env = os.getenv("SQLITE_PATH")
-    if env:
-        p = Path(env)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        return p
-
-    base_dir = Path(sys.executable).resolve().parent if _is_frozen() else Path(__file__).resolve().parent
-    data_dir = base_dir / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    return data_dir / "syncflow.db"
-def _connect_sqlite():
-    conn = sqlite3.connect(str(get_db_path()), check_same_thread=False, timeout=10)
-    try:
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA synchronous=NORMAL;")
-        conn.execute("PRAGMA temp_store=MEMORY;")
-        conn.execute("PRAGMA busy_timeout=5000;")
-    except Exception:
-        pass
-
-
-    # registra funções compatíveis com MySQL (evita quebrar queries antigas)
-    try:
-        conn.create_function("DAY", 1, _sf_day)
-        conn.create_function("MONTH", 1, _sf_month)
-        conn.create_function("YEAR", 1, _sf_year)
-        conn.create_function("CURDATE", 0, _sf_curdate)
-        conn.create_function("NOW", 0, _sf_now)
-        conn.create_function("DATEDIFF", 2, _sf_datediff)
-    except Exception:
-        pass
-
-
-
-    conn.execute("PRAGMA foreign_keys = ON;")
-    return conn
-
-def init_db():
-    """
-    Cria as tabelas essenciais se não existirem.
-    Banco começa vazio (você cadastra o admin via tela do sistema).
-    """
-    conn = _connect_sqlite()
-    cur = conn.cursor()
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS parceiros (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL,
-        cnpj TEXT,
-        email TEXT,
-        telefone TEXT,
-        status TEXT DEFAULT 'Ativo'
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        senha_hash TEXT NOT NULL,
-        tipo TEXT NOT NULL,
-        status TEXT DEFAULT 'Ativo',
-        parceiro_id INTEGER,
-        FOREIGN KEY(parceiro_id) REFERENCES parceiros(id)
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS eventos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL,
-        parceiro_id INTEGER NOT NULL,
-        criado_em TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY(parceiro_id) REFERENCES parceiros(id)
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS agendas_evento (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        evento_id INTEGER NOT NULL,
-        nome_agenda TEXT NOT NULL,
-        data_inicio TEXT,
-        data_termino TEXT,
-        grupo TEXT,
-        responsavel TEXT,
-        descricao TEXT,
-        parceiro_id INTEGER NOT NULL,
-        FOREIGN KEY(evento_id) REFERENCES eventos(id),
-        FOREIGN KEY(parceiro_id) REFERENCES parceiros(id)
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS agendas_grupos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        agenda_id INTEGER NOT NULL,
-        nome TEXT NOT NULL,
-        parceiro_id INTEGER NOT NULL,
-        FOREIGN KEY(agenda_id) REFERENCES agendas_evento(id),
-        FOREIGN KEY(parceiro_id) REFERENCES parceiros(id)
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS participantes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL,
-        data_nascimento TEXT,
-        idade INTEGER,
-        credencial TEXT,
-        pcg TEXT,
-        grupo TEXT,
-        cep TEXT,
-        logradouro TEXT,
-        numero TEXT,
-        bairro TEXT,
-        cidade TEXT,
-        uf TEXT,
-        observacoes TEXT,
-        status TEXT DEFAULT 'Ativo',
-        parceiro_id INTEGER NOT NULL,
-        FOREIGN KEY(parceiro_id) REFERENCES parceiros(id)
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS agendas_grupos_participantes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        grupo_id INTEGER NOT NULL,
-        participante_id INTEGER NOT NULL,
-        parceiro_id INTEGER NOT NULL,
-        FOREIGN KEY(grupo_id) REFERENCES agendas_grupos(id),
-        FOREIGN KEY(participante_id) REFERENCES participantes(id),
-        FOREIGN KEY(parceiro_id) REFERENCES parceiros(id)
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS frequencia_diaria (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        grupo_id INTEGER NOT NULL,
-        participante_id INTEGER NOT NULL,
-        data TEXT NOT NULL,
-        presente INTEGER NOT NULL DEFAULT 0,
-        parceiro_id INTEGER NOT NULL,
-        FOREIGN KEY(grupo_id) REFERENCES agendas_grupos(id),
-        FOREIGN KEY(participante_id) REFERENCES participantes(id),
-        FOREIGN KEY(parceiro_id) REFERENCES parceiros(id)
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS frequencia_mensal (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        grupo_id INTEGER NOT NULL,
-        participante_id INTEGER NOT NULL,
-        mes TEXT NOT NULL,
-        presente INTEGER NOT NULL DEFAULT 0,
-        parceiro_id INTEGER NOT NULL,
-        FOREIGN KEY(grupo_id) REFERENCES agendas_grupos(id),
-        FOREIGN KEY(participante_id) REFERENCES participantes(id),
-        FOREIGN KEY(parceiro_id) REFERENCES parceiros(id)
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS notificacoes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        parceiro_id INTEGER NOT NULL,
-        tipo TEXT,
-        mensagem TEXT,
-        link TEXT,
-        lida INTEGER NOT NULL DEFAULT 0,
-        criada_em TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY(parceiro_id) REFERENCES parceiros(id)
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS auditoria (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        parceiro_id INTEGER,
-        usuario_id INTEGER,
-        usuario_nome TEXT,
-        acao TEXT,
-        detalhes TEXT,
-        ip TEXT,
-        user_agent TEXT,
-        criado_em TEXT DEFAULT (datetime('now'))
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS reset_senha (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario_id INTEGER NOT NULL,
-        token TEXT NOT NULL,
-        expira_em TEXT NOT NULL
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS logs_suporte (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        parceiro_id INTEGER,
-        usuario_id INTEGER,
-        mensagem TEXT,
-        criado_em TEXT DEFAULT (datetime('now'))
-    );
-    """)
-
-    conn.commit()
-    conn.close()
-
-class _SQLiteDictCursor:
-    def __init__(self, cur):
-        self._cur = cur
-        self._cols = None
-
-    def execute(self, sql, params=()):
-        self._cur.execute(sql, params)
-        self._cols = [d[0] for d in (self._cur.description or [])]
-        return self
-
-    def executemany(self, sql, seq_params):
-        self._cur.executemany(sql, seq_params)
-        self._cols = [d[0] for d in (self._cur.description or [])]
-        return self
-
-    def fetchone(self):
-        row = self._cur.fetchone()
-        if row is None:
-            return None
-        if self._cols:
-            return {self._cols[i]: row[i] for i in range(len(self._cols))}
-        return row
-
-    def fetchall(self):
-        rows = self._cur.fetchall()
-        if not self._cols:
-            return rows
-        return [{self._cols[i]: r[i] for i in range(len(self._cols))} for r in rows]
-
-    def __iter__(self):
-        for r in self.fetchall():
-            yield r
-
-    def __getattr__(self, name):
-        return getattr(self._cur, name)
+# -----------------------------
+# Classe auxiliar p/ DB (MySQL)
+# -----------------------------
+import re
 
 class DB:
     """
-    Wrapper de conexão SQLite para manter compatibilidade com o sistema
-    (que antes usava mysql.connector cursor(dictionary=True)).
+    Wrapper de conexão MySQL para manter compatibilidade
+    com queries estilo SQLite durante a migração.
     """
 
     def __init__(self):
-        self.conn = _connect_sqlite()
-        self.cur = _SQLiteDictCursor(self.conn.cursor())
+        self.conn = pool.get_connection()
+        self.cur = self.conn.cursor(dictionary=True)
 
     def _translate_sql(self, sql: str) -> str:
-        # NOW() - INTERVAL n DAY -> datetime('now','-n day')
+        """
+        Traduções automáticas SQLite -> MySQL:
+
+        - ?                 -> %s
+        - strftime('%Y-%m') -> DATE_FORMAT
+        - date('now')       -> CURDATE()
+        """
+
+        # strftime('%Y-%m', campo) -> DATE_FORMAT(campo, '%Y-%m')
         sql = re.sub(
-            r"NOW\(\)\s*-\s*INTERVAL\s*(\d+)\s*DAY",
-            r"datetime('now','-\1 day')",
+            r"strftime\('%Y-%m',\s*([^)]+)\)",
+            r"DATE_FORMAT(\1, '%Y-%m')",
+            sql
+        )
+
+        # date('now') / DATE('now') -> CURDATE()
+        sql = re.sub(
+            r"date\(\s*'now'\s*\)",
+            "CURDATE()",
             sql,
             flags=re.IGNORECASE
         )
 
-        # CURDATE() - INTERVAL n DAY -> date('now','-n day')
-        sql = re.sub(
-            r"CURDATE\(\)\s*-\s*INTERVAL\s*(\d+)\s*DAY",
-            r"date('now','-\1 day')",
-            sql,
-            flags=re.IGNORECASE
-        )
-
-        # NOW() -> datetime('now')
-        sql = re.sub(r"\bNOW\(\)", "datetime('now')", sql, flags=re.IGNORECASE)
-        # CURDATE() -> date('now')
-        sql = re.sub(r"\bCURDATE\(\)", "date('now')", sql, flags=re.IGNORECASE)
-
-        # datetime('now') - INTERVAL n DAY (fallback) -> datetime('now','-n day')
-        sql = re.sub(
-            r"datetime\('now'\)\s*-\s*INTERVAL\s*(\d+)\s*DAY",
-            r"datetime('now','-\1 day')",
-            sql,
-            flags=re.IGNORECASE
-        )
-
-        # DATE_FORMAT(campo, '%%Y-%%m') -> strftime('%Y-%m', campo)
-        sql = re.sub(
-            r"DATE_FORMAT\(\s*([^,]+?)\s*,\s*'([^']+)'\s*\)",
-            lambda m: f"strftime('{m.group(2).replace('%%','%')}', {m.group(1).strip()})",
-            sql,
-            flags=re.IGNORECASE
-        )
-
-        # placeholders %s -> ?
-        if "%s" in sql:
-            sql = sql.replace("%s", "?")
+        # placeholders ? -> %s
+        # OBS: assume que ? NÃO é usado em string literal
+        if "?" in sql:
+            sql = sql.replace("?", "%s")
 
         return sql
 
@@ -436,8 +131,6 @@ class DB:
 
 def get_db():
     return DB()
-
-
 
 def contar_admins():
     conn = get_db()
@@ -488,126 +181,12 @@ def inject_eventos_menu():
 #  porque sobrescrevia a primeira; mantemos apenas esta.)
 
 # -----------------------------
-# -----------------------------
-# Primeiro acesso (criar admin)
-# -----------------------------
-@app.route("/setup", methods=["GET", "POST"])
-def setup():
-    """
-    Setup inicial (primeiro acesso)
-    - Cria APENAS o primeiro usuário Administrador, sem parceiro vinculado.
-    - Depois, o Administrador cria parceiros/usuários pelo próprio sistema.
-    """
-    # se já existe admin, não precisa mais
-    try:
-        if contar_admins() > 0:
-            return redirect(url_for("login"))
-    except Exception:
-        # se algo deu errado, ainda mostra a tela
-        pass
-
-    if request.method == "POST":
-        admin_nome = (request.form.get("admin_nome") or "").strip()
-        admin_email = (request.form.get("admin_email") or "").strip().lower()
-        admin_senha = (request.form.get("admin_senha") or "").strip()
-
-        if not admin_nome or not admin_email or not admin_senha:
-            flash("Preencha todos os campos obrigatórios.", "login")
-        else:
-            conn = get_db()
-            try:
-                # evita duplicidade por e-mail
-                existe = conn.execute(
-                    "SELECT id FROM usuarios WHERE LOWER(email) = %s",
-                    (admin_email,)
-                ).fetchone()
-                if existe:
-                    flash("Já existe um usuário com este e-mail.", "login")
-                    return redirect(url_for("setup"))
-
-                senha_hash = generate_password_hash(admin_senha)
-
-                # cria admin SEM parceiro
-                conn.execute("""
-                    INSERT INTO usuarios (nome, email, senha_hash, tipo, status, parceiro_id)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, (admin_nome, admin_email, senha_hash, "Administrador", "Ativo", None))
-
-                conn.commit()
-                flash("Administrador criado com sucesso! Faça login.", "login")
-                return redirect(url_for("login"))
-            except Exception as e:
-                conn.commit()
-                flash(f"Erro ao criar administrador: {e}", "login")
-            finally:
-                conn.close()
-
-    # HTML simples (não depende de template)
-    return render_template_string("""
-    <!doctype html>
-    <html lang="pt-br">
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Primeiro Acesso | SyncFlow</title>
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    </head>
-    <body class="bg-light">
-      <div class="container py-5" style="max-width: 640px;">
-        <div class="card shadow-sm">
-          <div class="card-body p-4">
-            <h4 class="mb-2">Primeiro acesso</h4>
-            <p class="text-muted mb-4">Crie o primeiro administrador do sistema.</p>
-
-            {% with messages = get_flashed_messages(category_filter=['login']) %}
-              {% if messages %}
-                <div class="alert alert-warning">{{ messages[0] }}</div>
-              {% endif %}
-            {% endwith %}
-
-            <form method="post">
-              <div class="row g-2">
-                <div class="col-md-6">
-                  <label class="form-label">Nome *</label>
-                  <input class="form-control" name="admin_nome" required>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">E-mail *</label>
-                  <input class="form-control" name="admin_email" type="email" required>
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Senha *</label>
-                  <input class="form-control" name="admin_senha" type="password" required>
-                </div>
-              </div>
-
-              <div class="d-grid mt-4">
-                <button class="btn btn-primary btn-lg">Criar administrador</button>
-              </div>
-
-              <div class="mt-3 text-muted small">
-                Dica: após o login, você poderá cadastrar os parceiros e usuários pelo painel do Administrador.
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </body>
-    </html>
-    """)
-
-
 # Login
-
 # -----------------------------
 @app.route("/", methods=["GET", "POST"])
 @app.route("/login", methods=["GET", "POST"])
 def login():
     get_flashed_messages()  # consome qualquer sobra
-
-    # Se é o primeiro acesso e não existe admin, vai para setup
-    if contar_admins() == 0:
-        return redirect(url_for("setup"))
 
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
@@ -838,15 +417,15 @@ def admin_home():
 
         logs = conn.execute("""
             SELECT 
-                a.id,
-                COALESCE(u.nome, a.usuario_nome) AS usuario,
+                l.id,
+                u.nome AS usuario,
                 p.nome AS parceiro,
-                a.acao,
-                a.criado_em AS data
-            FROM auditoria a
-            LEFT JOIN usuarios u ON u.id = a.usuario_id
-            LEFT JOIN parceiros p ON p.id = a.parceiro_id
-            ORDER BY a.id DESC
+                l.acao,
+                l.data
+            FROM logs_suporte l
+            LEFT JOIN usuarios u ON u.id = l.usuario_id
+            LEFT JOIN parceiros p ON p.id = l.parceiro_id
+            ORDER BY l.id DESC
             LIMIT 20
         """).fetchall()
 
@@ -4352,6 +3931,73 @@ def ajax_painel_dados():
 
         pcg_rows = conn.execute(sql_pcg, params_pcg).fetchall()
         pcg_series = [{"pcg": r["pcg"], "qtd": r["qtd"]} for r in pcg_rows]
+
+        # -------------------------
+        # TABELA: PCG SIM/NÃO por Credencial (participante único por grupo)
+        # -------------------------
+        sql_pcg_cred = """
+            SELECT tipo,
+                   SUM(CASE WHEN pcg_flag = 'SIM' THEN 1 ELSE 0 END) AS pcg_sim,
+                   SUM(CASE WHEN pcg_flag = 'NAO' THEN 1 ELSE 0 END) AS pcg_nao
+            FROM (
+                SELECT
+                    CASE
+                        WHEN UPPER(TRIM(p.credencial)) = 'PG' THEN 'PG'
+                        WHEN UPPER(TRIM(p.credencial)) = 'CO' THEN 'CO'
+                        WHEN UPPER(TRIM(p.credencial)) = 'DC' THEN 'DC'
+                        ELSE 'OUTROS'
+                    END AS tipo,
+                    CASE
+                        WHEN p.pcg IS NULL OR TRIM(p.pcg) = '' THEN 'NAO'
+                        WHEN LEFT(UPPER(TRIM(p.pcg)), 1) = 'S' THEN 'SIM'
+                        ELSE 'NAO'
+                    END AS pcg_flag,
+                    f.grupo_id,
+                    f.participante_id
+                FROM frequencia_diaria f
+                JOIN participantes    p ON p.id = f.participante_id
+                JOIN agendas_grupos   g ON g.id = f.grupo_id
+                JOIN agendas_evento   a ON a.id = g.agenda_id
+                WHERE f.data BETWEEN %s AND %s
+        """
+
+        params_pcg_cred = [data_ini, data_fim]
+
+        if usuario_tipo != "Administrador":
+            sql_pcg_cred += " AND a.parceiro_id = %s"
+            params_pcg_cred.append(parceiro_id)
+
+        if evento_id:
+            sql_pcg_cred += " AND a.evento_id = %s"
+            params_pcg_cred.append(evento_id)
+
+        if agenda_id:
+            sql_pcg_cred += " AND g.agenda_id = %s"
+            params_pcg_cred.append(agenda_id)
+
+        if grupo_id:
+            sql_pcg_cred += " AND g.id = %s"
+            params_pcg_cred.append(grupo_id)
+
+        # 1 linha por participante/grupo/tipo/pcg
+        sql_pcg_cred += """
+                GROUP BY f.grupo_id, f.participante_id, tipo, pcg_flag
+            ) sub
+            GROUP BY tipo
+        """
+
+        pcg_cred_rows = conn.execute(sql_pcg_cred, params_pcg_cred).fetchall()
+        mapa_pcg_cred = {r["tipo"]: r for r in pcg_cred_rows}
+
+        pcg_cred_series = []
+        for tipo in ["PG", "CO", "DC", "OUTROS"]:
+            r = mapa_pcg_cred.get(tipo, {}) or {}
+            pcg_cred_series.append({
+                "tipo": tipo,
+                "pcg_sim": int(r.get("pcg_sim", 0) or 0),
+                "pcg_nao": int(r.get("pcg_nao", 0) or 0)
+            })
+
     
         # -------------------------
         # GRÁFICO PARTICIPANTES POR GRUPO
@@ -4406,6 +4052,7 @@ def ajax_painel_dados():
                 "agendas_mes": agendas_mes,
                 "credencial": cred_series,
                 "pcg": pcg_series,
+                "pcg_credencial": pcg_cred_series,
                 "participantes_grupo": participantes_por_grupo
             },
             "intervalo": {
@@ -4474,6 +4121,11 @@ def gerar_relatorio_pdf():
     grupo_id = to_int(grupo)
 
     conn = get_db()
+
+    # Linhas usadas no cabeçalho (nomes)
+    ev = None
+    ag = None
+    gr = None
 
     # -----------------------------
     # VALIDAR EVENTO
@@ -4594,16 +4246,81 @@ def gerar_relatorio_pdf():
     pdf.setFont("Helvetica", 10)
     pdf.setFillColorRGB(0.2, 0.2, 0.2)
 
-    pdf.drawString(40, y, f"Tipo: {tipo_data.upper()} | Ano: {ano} | Mês: {mes}")
+    # -----------------------------
+    # CABEÇALHO (FILTROS FORMATADOS)
+    # -----------------------------
+    tipo_map = {"ano": "Ano", "mes": "Mês", "periodo": "Período"}
+    tipo_label = tipo_map.get(tipo_data, (tipo_data.capitalize() if tipo_data else ""))
+
+    def mes_nome_pt(n):
+        nomes = [
+            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+        ]
+        try:
+            n = int(n)
+            return nomes[n - 1] if 1 <= n <= 12 else ""
+        except Exception:
+            return ""
+
+    def fmt_data(d):
+        try:
+            return datetime.strptime(d, "%Y-%m-%d").strftime("%d/%m/%Y")
+        except Exception:
+            return d or ""
+
+    ano_display = ""
+    mes_display = ""
+
+    if tipo_data == "mes" and mes:
+        # input type=month vem como YYYY-MM
+        if len(mes) >= 7 and mes[4] == "-":
+            ano_display = mes[:4]
+            mes_display = mes_nome_pt(mes[5:7])
+        else:
+            mes_display = mes
+            ano_display = ano or ""
+    elif tipo_data == "ano":
+        ano_display = ano or ""
+    elif tipo_data == "periodo":
+        # ano/mês não fazem sentido aqui (usa a linha de período abaixo)
+        ano_display = ""
+        mes_display = ""
+
+    periodo_de = fmt_data(data_de) if data_de else ""
+    periodo_ate = fmt_data(data_ate) if data_ate else ""
+
+    evento_label = (ev["nome"] if (evento_id and ev) else "Todos")
+    agenda_label = ((ag.get("nome_agenda") or ag.get("nome")) if (agenda_id and ag) else "Todas")
+    grupo_label  = (gr["nome"] if (grupo_id and gr) else "Todos")
+
+    linha_tipo = []
+    if tipo_label:
+        linha_tipo.append(f"Tipo: {tipo_label}")
+    else:
+        linha_tipo.append("Tipo:")
+
+    if ano_display:
+        linha_tipo.append(f"Ano: {ano_display}")
+    if mes_display:
+        linha_tipo.append(f"Mês: {mes_display}")
+
+    pdf.drawString(40, y, " | ".join(linha_tipo))
     y -= 13
-    pdf.drawString(40, y, f"Período: {data_de or '-'} até {data_ate or '-'}")
-    y -= 13
-    pdf.drawString(40, y, f"Evento: {evento or 'Todos'} | Agenda: {agenda or 'Todas'} | Grupo: {grupo or 'Todos'}")
+
+    # Só mostrar linha de período quando realmente selecionado
+    if tipo_data == "periodo" and (periodo_de or periodo_ate):
+        pdf.drawString(40, y, f"Período: {periodo_de or '-'} até {periodo_ate or '-'}")
+        y -= 13
+
+    pdf.drawString(40, y, f"Evento: {evento_label} | Agenda: {agenda_label} | Grupo: {grupo_label}")
     y -= 25
 
     # -----------------------------
     # TABELA CARDS
     # -----------------------------
+    ESPACO_ENTRE_TABELAS = 30
+
     cards = dados["cards"]
     tabela_cards = [
         ["Agendas x Presenças", "Valor"],
@@ -4616,17 +4333,13 @@ def gerar_relatorio_pdf():
     tbl.wrapOn(pdf, 40, y)
     tbl.drawOn(pdf, 40, y - (len(tabela_cards) * 14))
 
-    y -= (len(tabela_cards) * 14) + 30
-
+    y -= (len(tabela_cards) * 14) + ESPACO_ENTRE_TABELAS
+        
     # -----------------------------
     # PARTICIPANTES POR GRUPO
-    # -----------------------------
-    pdf.setFillColorRGB(0.8, 0.8, 0.8)
-    pdf.rect(40, y - 5, 200, 1, fill=1, stroke=0)
-
-    y -= 20
-
-    tabela_grupo = [["Grupo", "Qtde"]]
+    # -----------------------------   
+    
+    tabela_grupo = [["Grupo", "Qtde Participantes"]]
     for item in dados["series"]["participantes_grupo"]:
         tabela_grupo.append([item["grupo"], item["qtd"]])
 
@@ -4635,8 +4348,24 @@ def gerar_relatorio_pdf():
     tbl.wrapOn(pdf, 40, y)
     tbl.drawOn(pdf, 40, y - (len(tabela_grupo) * 14))
 
-    y -= (len(tabela_grupo) * 14) + 30
+    y -= (len(tabela_grupo) * 14) + ESPACO_ENTRE_TABELAS
 
+    # -----------------------------
+    # PCG
+    # -----------------------------   
+    y -= 12
+
+    tabela_pcg = [["PCG", "Qtde Participantes"]]
+    for p in dados["series"]["pcg"]:
+        tabela_pcg.append([p["pcg"], p["qtd"]])
+
+    tbl = Table(tabela_pcg, colWidths=[250, 100])
+    tbl.setStyle(TABLE_STYLE)
+    tbl.wrapOn(pdf, 40, y)
+    tbl.drawOn(pdf, 40, y - (len(tabela_pcg) * 14))
+    
+    y -= (len(tabela_pcg) * 14) + ESPACO_ENTRE_TABELAS
+     
     # -----------------------------
     # CREDENCIAIS
     # -----------------------------
@@ -4649,7 +4378,7 @@ def gerar_relatorio_pdf():
     cred_dict = {c["tipo"]: c["qtd"] for c in cred}
 
     tabela_cred = [
-        ["Credencial", "Qtde"],
+        ["Credencial", "Qtde Participantes"],
         ["PG", cred_dict.get("PG", 0)],
         ["CO", cred_dict.get("CO", 0)],
         ["DC", cred_dict.get("DC", 0)],
@@ -4661,21 +4390,30 @@ def gerar_relatorio_pdf():
     tbl.wrapOn(pdf, 40, y)
     tbl.drawOn(pdf, 40, y - (len(tabela_cred) * 14))
 
-    y -= (len(tabela_cred) * 14) + 30
+    y -= (len(tabela_cred) * 14) + ESPACO_ENTRE_TABELAS
 
     # -----------------------------
-    # PCG
-    # -----------------------------   
-    y -= 12
+    # PCG POR CREDENCIAL (SIM/NÃO)
+    # -----------------------------
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.setFillColorRGB(0.15, 0.15, 0.15)
+    pdf.drawString(40, y, "PCG por Credencial")
+    y -= 20
 
-    tabela_pcg = [["PCG", "Qtde"]]
-    for p in dados["series"]["pcg"]:
-        tabela_pcg.append([p["pcg"], p["qtd"]])
+    pcg_cred = dados["series"].get("pcg_credencial", []) or []
+    pcg_cred_map = {r.get("tipo"): r for r in pcg_cred}
 
-    tbl = Table(tabela_pcg, colWidths=[250, 100])
+    tabela_pcg_cred = [["Credencial", "PCG SIM", "PCG NÃO"]]
+    for tipo in ["PG", "CO", "DC", "OUTROS"]:
+        r = pcg_cred_map.get(tipo, {}) or {}
+        tabela_pcg_cred.append([tipo, r.get("pcg_sim", 0), r.get("pcg_nao", 0)])
+
+    tbl = Table(tabela_pcg_cred, colWidths=[190, 110, 110])
     tbl.setStyle(TABLE_STYLE)
     tbl.wrapOn(pdf, 40, y)
-    tbl.drawOn(pdf, 40, y - (len(tabela_pcg) * 14))
+    tbl.drawOn(pdf, 40, y - (len(tabela_pcg_cred) * 14))
+
+    y -= (len(tabela_pcg_cred) * 14) + ESPACO_ENTRE_TABELAS   
 
     # rodapé da página 1
     desenhar_rodape(pdf, largura, usuario_nome)
@@ -5418,40 +5156,6 @@ def inject_notificacoes():
         "notificacoes": notificacoes,
         "notificacoes_nao_lidas": len(notificacoes)
     }
-@app.route("/notificacoes/abrir/<int:id>")
-def abrir_notificacao(id):
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))
-
-    parceiro_id = session["parceiro_id"]
-    conn = get_db()
-
-    notif = conn.execute("""
-        SELECT id, link
-        FROM notificacoes
-        WHERE id = %s AND parceiro_id = %s
-    """, (id, parceiro_id)).fetchone()
-
-    if not notif:
-        conn.close()
-        return redirect(url_for("home"))
-
-    conn.execute("""
-        UPDATE notificacoes
-        SET lida = 1
-        WHERE id = %s AND parceiro_id = %s
-    """, (id, parceiro_id))
-
-    conn.commit()
-    conn.close()
-
-    link = (notif.get("link") or "").strip()
-
-    # 🔐 segurança: só permite URL interna
-    if link and url_parse(link).netloc == "":
-        return redirect(link)
-
-    return redirect(url_for("home"))
 
 def gerar_notificacoes_aniversario(conn):
     aniversariantes = conn.execute("""
@@ -5518,44 +5222,48 @@ def notificacoes_historico():
         notificacoes=notificacoes
     )
 
-# ==========================
-# ENTRYPOINT (rodar local / empacotar)
-# ==========================
-def _start_server():
-    # garante schema criado
-    try:
-        init_db()
-    except Exception as e:
-        print("ERRO ao inicializar banco SQLite:", e)
+@app.route("/notificacoes/abrir/<int:id>")
+def abrir_notificacao(id):
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
 
-    # mostra onde o banco está (útil para suporte)
-    try:
-        print("SQLite DB:", str(get_db_path()))
-    except Exception:
-        pass
+    parceiro_id = session["parceiro_id"]
+    conn = get_db()
 
-    host = os.getenv("HOST", "0.0.0.0")
-    try:
-        port = int(os.getenv("PORT", "5000"))
-    except Exception:
-        port = 5000
+    notif = conn.execute("""
+        SELECT id, link
+        FROM notificacoes
+        WHERE id = %s AND parceiro_id = %s
+    """, (id, parceiro_id)).fetchone()
 
-    env = (os.getenv("APP_ENV", "dev") or "dev").lower()
-    debug = env in ("dev", "development")
+    if not notif:
+        conn.close()
+        return redirect(url_for("home"))
 
-    # Preferir waitress (mais estável em EXE). Se não existir, usa Flask dev server.
-    use_waitress = os.getenv("USE_WAITRESS", "1") == "1"
-    if use_waitress:
-        try:
-            from waitress import serve
-            print(f"SyncFlow (SQLite) rodando em http://127.0.0.1:{port}")
-            serve(app, host=host, port=port)
-            return
-        except Exception:
-            pass
+    conn.execute("""
+        UPDATE notificacoes
+        SET lida = 1
+        WHERE id = %s AND parceiro_id = %s
+    """, (id, parceiro_id))
 
-    print(f"SyncFlow (SQLite) rodando em http://127.0.0.1:{port}")
-    app.run(host=host, port=port, debug=debug, use_reloader=False)
+    conn.commit()
+    conn.close()
+
+    link = (notif.get("link") or "").strip()
+
+    # 🔐 segurança: só permite URL interna
+    if link and url_parse(link).netloc == "":
+        return redirect(link)
+
+    return redirect(url_for("home"))
+
 
 if __name__ == "__main__":
-    _start_server()
+    # init_db()  # deixe só quando você quiser rodar local e inicializar admin
+    app.run(host="0.0.0.0", port=5000, debug=False)
+    
+
+
+
+
+

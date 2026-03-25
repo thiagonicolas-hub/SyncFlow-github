@@ -1,0 +1,852 @@
+{% extends "layout.html" %}
+
+{% block conteudo %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">  
+        <div class="page-header">
+            <h2>Participantes</h2>
+            <p class="page-subtitle">Gerencie os participantes cadastrados no sistema.</p>
+        </div>     
+    
+        <div class="d-flex gap-2 mb-3 flex-wrap menu-minimal">            
+    
+            <!-- EXPORTAR CSV -->
+            <a class="btn btn-outline-secondary navegpagina"
+               href="{{ url_for('export_participantes',
+                                busca=busca,
+                                status=status_filtro,
+                                grupo=grupo_filtro,
+                                pcg=pcg_filtro) }}">
+                <i class="fas fa-file-export"></i> Exportar CSV
+            </a>
+    
+            <!-- BOTÃO ABRE MODAL NOVO -->
+            <button class="btn btn-success novo" data-bs-toggle="modal" data-bs-target="#modalNovo">
+                + Novo Participante
+            </button>
+    
+        </div>   
+    
+</div>
+
+<div class="card shadow-sm p-4">   
+
+    <!-- FILTROS -->
+    <div class="d-flex justify-content-between align-items-center mb-3 ">
+
+        <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+
+            <div class="search-container mb-3">
+                <label class="form-label">Buscar</label>
+                <div style="position: relative;">
+                    <i style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
+                    <input type="text" name="busca" class="search-input"
+                           placeholder="Buscar nome..."
+                           value="{{ busca }}"
+                           style="padding-left: 28px;">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select" style="color: rgb(109, 107, 107) !important;" >
+                    <option value="">Status</option>
+                    <option value="Ativo"   {% if status_filtro == 'Ativo' %}selected{% endif %}>Ativo</option>
+                    <option value="Inativo" {% if status_filtro == 'Inativo' %}selected{% endif %}>Inativo</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Grupo</label>
+                <input type="text" name="grupo" class="form-control filtro-input"
+                       placeholder="Filtrar grupo..." value="{{ grupo_filtro }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">PCG</label>
+                <input type="text" name="pcg" class="form-control filtro-input"
+                       placeholder="PCG" value="{{ pcg_filtro }}">
+            </div>
+
+            <button class="btn btn-primary mt-3">
+                <i class=""></i> Filtrar
+            </button>
+
+            <a href="{{ url_for('participantes') }}"
+            class="btn btn-warning btn-limpar mt-3">
+                Limpar
+            </a> 
+            
+            <!-- BOTÃO PAINEL -->
+            <a href="{{ url_for('participantes_painel') }}"
+                class="btn btn-info mt-3">
+                   Painel Participantes
+            </a>
+                               
+        </form>
+    </div>         
+
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>
+                    <a href="{{ url_for('participantes',
+                                        pagina=1,
+                                        busca=busca,
+                                        status=status_filtro,
+                                        grupo=grupo_filtro,
+                                        pcg=pcg_filtro,
+                                        sort='nome',
+                                        dir='asc' if sort != 'nome' or direction == 'desc' else 'desc') }}"
+                       class="th-sortable">
+                        Nome
+                        {% if sort == 'nome' %}
+                            <span class="sort-indicator">{{ '↑' if direction == 'asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>
+        
+                <th>
+                    <a href="{{ url_for('participantes',
+                                        pagina=1,
+                                        busca=busca,
+                                        status=status_filtro,
+                                        grupo=grupo_filtro,
+                                        pcg=pcg_filtro,
+                                        sort='idade',
+                                        dir='asc' if sort != 'idade' or direction == 'desc' else 'desc') }}"
+                       class="th-sortable">
+                        Idade
+                        {% if sort == 'idade' %}
+                            <span class="sort-indicator">{{ '↑' if direction == 'asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>
+        
+                <th>
+                    <a href="{{ url_for('participantes',
+                                        pagina=1,
+                                        busca=busca,
+                                        status=status_filtro,
+                                        grupo=grupo_filtro,
+                                        pcg=pcg_filtro,
+                                        sort='credencial',
+                                        dir='asc' if sort != 'credencial' or direction == 'desc' else 'desc') }}"
+                       class="th-sortable">
+                        Credencial
+                        {% if sort == 'credencial' %}
+                            <span class="sort-indicator">{{ '↑' if direction == 'asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>
+        
+                <th>
+                    <a href="{{ url_for('participantes',
+                                        pagina=1,
+                                        busca=busca,
+                                        status=status_filtro,
+                                        grupo=grupo_filtro,
+                                        pcg=pcg_filtro,
+                                        sort='pcg',
+                                        dir='asc' if sort != 'pcg' or direction == 'desc' else 'desc') }}"
+                       class="th-sortable">
+                        PCG
+                        {% if sort == 'pcg' %}
+                            <span class="sort-indicator">{{ '↑' if direction == 'asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>
+        
+                <th>
+                    <a href="{{ url_for('participantes',
+                                        pagina=1,
+                                        busca=busca,
+                                        status=status_filtro,
+                                        grupo=grupo_filtro,
+                                        pcg=pcg_filtro,
+                                        sort='grupo',
+                                        dir='asc' if sort != 'grupo' or direction == 'desc' else 'desc') }}"
+                       class="th-sortable">
+                        Grupo
+                        {% if sort == 'grupo' %}
+                            <span class="sort-indicator">{{ '↑' if direction == 'asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>
+        
+                <th>
+                    <a href="{{ url_for('participantes',
+                                        pagina=1,
+                                        busca=busca,
+                                        status=status_filtro,
+                                        grupo=grupo_filtro,
+                                        pcg=pcg_filtro,
+                                        sort='status',
+                                        dir='asc' if sort != 'status' or direction == 'desc' else 'desc') }}"
+                       class="th-sortable">
+                        Status
+                        {% if sort == 'status' %}
+                            <span class="sort-indicator">{{ '↑' if direction == 'asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center colunatabela">Detalhes</th>
+                <th class="text-center colunatabela">Ações</th>
+            </tr>
+        </thead>               
+    
+        <tbody>
+            {% for p in dados %}
+            <tr class="{% if p.status == 'Inativo' %}tr-inativo{% endif %}">
+                <td>{{ p.nome }}</td>
+                <td>{{ p.idade }}</td>
+                <td>{{ p.credencial }}</td>
+                <td>{{ p.pcg }}</td>
+                <td>{{ p.grupo }}</td>
+    
+                <td>
+                    {% if p.status == "Ativo" %}
+                        <span class="badge-status ativo">Ativo</span>
+                    {% else %}
+                        <span class="badge-status inativo">Inativo</span>
+                    {% endif %}
+                </td>   
+                <td class="text-center">
+                    <button class="btn btn-outline-info btn-sm "
+                            onclick="abrirModalView(this)"
+                            data-id="{{ p.id }}"
+                            data-nome="{{ p.nome }}"
+                            data-idade="{{ p.idade }}"
+                            data-credencial="{{ p.credencial }}"
+                            data-pcg="{{ p.pcg }}"
+                            data-grupo="{{ p.grupo }}"
+                            data-observacoes="{{ p.observacoes|escape }}"
+                            data-status="{{ p.status }}">
+                            Detalhes
+                    </button>
+                </td>                             
+    
+                <!-- AÇÕES COM 3 PONTOS -->
+                <td class="text-center">
+                    <div class="dropdown">
+                        <button class="action-menu-btn" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                
+                        <ul class="dropdown-menu">                            
+                            <li>
+                                {% if session['usuario_tipo'] != 'Pleno' %}
+                                    <a class="dropdown-item"
+                                        href="#"
+                                        onclick="abrirModalEditar(this)"
+                                        data-id="{{p.id}}"
+                                        data-nome="{{p.nome}}"
+                                        data-nascimento="{{p.data_nascimento}}"
+                                        data-idade="{{p.idade}}"
+                                        data-cep="{{p.cep}}"
+                                        data-logradouro="{{p.logradouro}}"
+                                        data-numero="{{p.numero}}"
+                                        data-bairro="{{p.bairro}}"
+                                        data-cidade="{{p.cidade}}"
+                                        data-uf="{{p.uf}}"                                        
+                                        data-credencial="{{p.credencial}}"
+                                        data-pcg="{{p.pcg}}"
+                                        data-grupo="{{p.grupo}}"
+                                        data-status="{{p.status}}"
+                                        data-observacoes="{{ p.observacoes|escape }}">                                    
+                                        <i class="ph ph-note-pencil"></i> Editar
+                                    </a>                            
+                                {% endif %}    
+                            </li>
+                
+                            {% if p.status == "Ativo" %}
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="confirmarInativar(this)"
+                                data-id="{{p.id}}"
+                                data-nome="{{p.nome}}">
+                                    <i class="ph ph-user-minus"></i> Inativar
+                                </a>
+                                
+                            </li>
+                            {% endif %}
+                
+                            <li>
+                                {% if session['usuario_tipo'] in ['Administrador', 'Master', 'Suporte'] %}
+                                <a class="dropdown-item text-danger" href="#" onclick="confirmarExcluir(this)"
+                                data-id="{{p.id}}"
+                                data-nome="{{p.nome}}">
+                                    <i class="ph ph-trash"></i> Excluir
+                                </a>
+                            {% endif %}
+                               
+                            </li>
+                        </ul>
+                    </div>
+                </td>                    
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>               
+                <td colspan="8" class="text-end">
+                    Total de Participantes: {{ total }}
+                    (exibindo {{ dados|length }} nesta página)
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+    <div class="pagination-container">
+
+        {% if pagina > 1 %}
+            <a href="{{ url_for('participantes',
+                                pagina=pagina-1,
+                                busca=busca,
+                                status=status_filtro,
+                                grupo=grupo_filtro,
+                                pcg=pcg_filtro,
+                                sort=sort,
+                                dir=direction) }}"
+               class="page-btn">Anterior</a>
+        {% else %}
+            <span class="page-btn disabled">Anterior</span>
+        {% endif %}
+    
+        {% for p in range(1, total_paginas + 1) %}
+            <a href="{{ url_for('participantes',
+                                pagina=p,
+                                busca=busca,
+                                status=status_filtro,
+                                grupo=grupo_filtro,
+                                pcg=pcg_filtro,
+                                sort=sort,
+                                dir=direction) }}"
+               class="page-number {% if pagina == p %}active{% endif %}">
+                {{ p }}
+            </a>
+        {% endfor %}
+    
+        {% if pagina < total_paginas %}
+            <a href="{{ url_for('participantes',
+                                pagina=pagina+1,
+                                busca=busca,
+                                status=status_filtro,
+                                grupo=grupo_filtro,
+                                pcg=pcg_filtro,
+                                sort=sort,
+                                dir=direction) }}"
+               class="page-btn">Próxima</a>
+        {% else %}
+            <span class="page-btn disabled">Próxima</span>
+        {% endif %}
+    
+    </div>
+    
+</div>
+
+<!-- ==========================================
+     MODAL CADASTRAR PARTICIPANTE 
+========================================== -->
+<div class="modal fade" id="modalNovo" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content sixty-modal">
+  
+        <form method="POST" action="/participantes/novo">
+  
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-user-plus" style="margin-right: 5px;"></i> Novo Participante</h5>
+          <button type="button" class="btn-close btn-close" data-bs-dismiss="modal"></button>
+        </div>
+  
+        <div class="modal-body">
+  
+            <div class="row">
+                <div class="col-md-6 mb-3 nome">
+                    <label class="form-label">Nome</label>
+                    <input type="text" name="nome" class="form-control" required>
+                </div>
+
+                <div class="col-md-4 mb-3 nascimento">
+                    <label class="form-label">Nascimento</label>
+                    <input type="date" name="data_nascimento" id="data_nascimento" class="form-control">
+                </div>            
+  
+                <div class="col-md-2 mb-3 idade">
+                    <label class="form-label">Idade</label>
+                    <input type="number" name="idade" id="idade" class="form-control" readonly>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3 cep">
+                    <label class="form-label">CEP</label>
+                    <div class="input-group">
+                        <input type="text" id="cep" name="cep" class="form-control">
+                        <button type="button" class="btn btn-outline-secondary" onclick="buscarCEP()">Buscar</button>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3 log logradouro">
+                    <label class="form-label">Logradouro</label>
+                    <input type="text" id="logradouro" name="logradouro" class="form-control">
+                </div>
+            </div>
+            
+            <div class="row">                    
+                <div class="col-md-2 mb-3 numero">
+                    <label class="form-label">Número</label>
+                    <input type="text" name="numero" class="form-control">
+                </div>
+                <div class="col-md-4 mb-3 bairro">
+                    <label class="form-label">Bairro</label>
+                    <input type="text" id="bairro" name="bairro" class="form-control">
+                </div>
+                <div class="col-md-4 mb-3 cidade">
+                    <label class="form-label">Cidade</label>
+                    <input type="text" id="cidade" name="cidade" class="form-control">
+                </div>
+                <div class="col-md-2 mb-3 uf">
+                    <label class="form-label">UF</label>
+                    <input type="text" id="uf" name="uf" class="form-control">
+                </div>          
+                <div class="col-md-3 mb-3 credencial">
+                    <label class="form-label">Credencial</label>
+                        <select name="credencial" class="form-select" required>
+                            <option value="">Selecione</option>
+                            <option value="CO">CO</option>
+                            <option value="DC">DC</option>
+                            <option value="PG">PG</option>
+                        </select>                
+                </div>  
+                <div class="col-md-3 mb-3 pcg">
+                    <label class="form-label">PCG</label>
+                        <select name="pcg" class="form-select" required>
+                            <option value="">Selecione</option>
+                            <option value="Sim">Sim</option>
+                            <option value="Não">Não</option>
+                        </select>                
+                </div>  
+                <div class="col-md-3 mb-3 grupo">
+                    <label class="form-label">Grupo</label>
+                    <input type="text" name="grupo" class="form-control" required>
+                </div>  
+                <div class="col-md-3 mb-3 status">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="Ativo">Ativo</option>
+                        <option value="Inativo">Inativo</option>
+                    </select>
+                </div>
+            </div>
+  
+            <div class="mb-3 observacoes">
+                <label class="form-label">Observações</label>
+                <textarea name="observacoes" class="form-control" rows="4" style="resize: none;"></textarea>
+            </div>
+  
+        </div>
+  
+        <div class="modal-footer">
+          <button class="btn btn-success">Salvar</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+  
+        </form>
+  
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================
+     MODAL EDITAR PARTICIPANTE
+================================ -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content sixty-modal">
+
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-edit" style="margin-right: 5px;"></i>Editar Participante</h5>
+                <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form id="formEditar" method="POST">
+
+                <div class="modal-body">
+                    <div class="row">
+
+                        <input type="hidden" name="id" id="edit_id">
+                    
+                        <div class="col-md-6 mb-3 nome">
+                            <label class="form-label">Nome</label>
+                            <input type="text" class="form-control" name="nome" id="edit_nome" required>
+                        </div>
+                    
+                        <div class="col-md-4 mb-3 nascimento">
+                            <label class="form-label">Nascimento</label>
+                            <input type="date" class="form-control" name="data_nascimento" id="edit_data_nascimento">
+                        </div>
+                    
+                        <div class="col-md-2 mb-3 idade">
+                            <label class="form-label">Idade</label>
+                            <input type="number" class="form-control" name="idade" id="edit_idade" readonly>
+                        </div>                    
+                    </div>
+                    <div class="row"> 
+                        <div class="col-md-4 mb-3 cep">
+                            <label class="form-label">CEP</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="cep" id="edit_cep">
+                                <button type="button" class="btn btn-outline-secondary"
+                                        onclick="buscarCEPEditar()">Buscar</button>
+                            </div>
+                        </div>
+                    
+                        <div class="col-md-3 mb-3 log logradouro">
+                            <label class="form-label">Logradouro</label>
+                            <input type="text" class="form-control" name="logradouro" id="edit_logradouro">
+                        </div>
+                    </div>  
+                    <div class="row">
+                        <div class="col-md-2 mb-3 numero">
+                            <label class="form-label">Número</label>
+                            <input type="text" name="numero" class="form-control" id="edit_numero">
+                        </div>
+                        <div class="col-md-4 mb-3 bairro">
+                            <label class="form-label">Bairro</label>
+                            <input type="text" class="form-control" name="bairro" id="edit_bairro">
+                        </div>
+                        <div class="col-md-4 mb-3 cidade">
+                            <label class="form-label">Cidade</label>
+                            <input type="text" class="form-control" name="cidade" id="edit_cidade">
+                        </div>
+                    
+                        <div class="col-md-2 mb-3 uf">
+                            <label class="form-label">UF</label>
+                            <input type="text" class="form-control" name="uf" id="edit_uf">
+                        </div>
+                    </div>
+                    
+                <div class="row">
+                    <div class="col-md-3 mb-3 credencial">
+                        <label class="form-label">Credencial</label>
+                        <select class="form-select" name="credencial" id="edit_credencial" required>
+                            <option value="CO">CO</option>
+                            <option value="DC">DC</option>
+                            <option value="PG">PG</option>
+                        </select>                            
+                    </div>
+                    <div class="col-md-3 mb-3 pcg">
+                        <label class="form-label">PCG</label>
+                        <select class="form-select" name="pcg" id="edit_pcg" required>
+                            <option value="SIM">Sim</option>
+                            <option value="NÃO">Não</option>
+                        </select>                        
+                    </div>
+
+                    <div class="col-md-3 mb-3 grupo">
+                        <label class="form-label">Grupo</label>
+                        <input type="text" class="form-control" name="grupo" id="edit_grupo" required>
+                    </div>
+
+                    <div class="col-md-3 mb-3 status">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" name="status" id="edit_status">
+                            <option value="Ativo">Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                        </select>
+                    </div>                    
+                </div>
+                    <div class="mb-12">
+                        <label class="form-label">Observações</label>
+                        <textarea class="form-control" name="observacoes" id="edit_observacoes" style="resize: none;" rows="4"></textarea>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-success">Salvar Alterações</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>                    
+                </div>                
+
+            </form>
+
+        </div>
+    </div>
+</div>
+<!-- MODAL CONFIRMAR EXCLUSÃO -->
+<div class="modal fade" id="modalExcluir" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content sixty-modal">
+        
+        <div class="modal-header">
+          <h5 class="modal-title text-danger">Confirmar Exclusão</h5>
+          <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
+        </div>
+  
+        <div class="modal-body">
+          Tem certeza que deseja excluir <b id="excluir_nome"></b>?
+        </div>
+  
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <a id="btnConfirmarExcluir" class="btn btn-danger">Excluir</a>
+        </div>
+  
+      </div>
+    </div>
+  </div>
+ 
+  <!-- MODAL CONFIRMAR INATIVAÇÃO -->
+<div class="modal fade" id="modalInativar" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content sixty-modal">
+  
+        <div class="modal-header">
+          <h5 class="modal-title">Confirmar Inativação</h5>
+          <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
+        </div>
+  
+        <div class="modal-body">
+          Inativar <b id="inativar_nome"></b>?
+        </div>
+  
+        <div class="modal-footer">
+            <a id="btnConfirmarInativar" class="btn btn-warning">Inativar</a>
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>          
+        </div>
+  
+      </div>
+    </div>
+  </div>
+<!-- ================================
+     MODAL VIEW - Visualizar Dados
+================================ -->
+<div class="modal fade" id="modalView" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content sixty-modal">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Visualizar Participante</h5>
+                <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="row g-3">
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Nome</label>
+                        <div class="view-field" id="view_nome"></div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Idade</label>
+                        <div class="view-field" id="view_idade"></div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Status</label>
+                        <div class="view-field" id="view_status"></div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Credencial</label>
+                        <div class="view-field" id="view_credencial"></div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">PCG</label>
+                        <div class="view-field" id="view_pcg"></div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Grupo</label>
+                        <div class="view-field" id="view_grupo"></div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">Observações</label>
+                        <div class="view-field" id="view_observacoes"></div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function confirmarInativar(el) {
+        document.getElementById("inativar_nome").innerText = el.dataset.nome;
+        document.getElementById("btnConfirmarInativar").href = "/participantes/inativar/" + el.dataset.id;
+        new bootstrap.Modal(document.getElementById("modalInativar")).show();
+    }
+</script>    
+  
+<script>
+    function abrirModalEditar(el) {
+
+        document.getElementById("edit_id").value = el.dataset.id;
+        document.getElementById("edit_nome").value = el.dataset.nome;
+        document.getElementById("edit_data_nascimento").value = el.dataset.nascimento;
+        document.getElementById("edit_idade").value =
+            calcularIdade(el.dataset.nascimento);
+
+        document.getElementById("edit_cep").value = el.dataset.cep || '';
+        document.getElementById("edit_logradouro").value = el.dataset.logradouro || '';
+        document.getElementById("edit_bairro").value = el.dataset.bairro || '';
+        document.getElementById("edit_cidade").value = el.dataset.cidade || '';
+        document.getElementById("edit_uf").value = el.dataset.uf || '';
+
+        document.getElementById("edit_credencial").value = el.dataset.credencial;
+        document.getElementById("edit_pcg").value =
+                (el.dataset.pcg || '').toUpperCase();
+        document.getElementById("edit_grupo").value = el.dataset.grupo;
+        document.getElementById("edit_observacoes").value = el.dataset.observacoes;
+        document.getElementById("edit_status").value = el.dataset.status;
+
+        document.getElementById("formEditar").action =
+            "/participantes/editar/" + el.dataset.id;
+
+        new bootstrap.Modal(document.getElementById('modalEditar')).show();
+    }
+</script>
+
+<script>
+    function confirmarExcluir(el) {
+        document.getElementById("excluir_nome").innerText = el.dataset.nome;
+        document.getElementById("btnConfirmarExcluir").href = "/participantes/excluir/" + el.dataset.id;
+        new bootstrap.Modal(document.getElementById("modalExcluir")).show();
+    }
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const linksPag = document.querySelectorAll('.pagination-container a');
+        const formBusca = document.querySelector('.search-container')?.closest('form');
+    
+        linksPag.forEach(a => {
+            a.addEventListener('click', () => {
+                document.body.classList.add('loading');
+            });
+        });
+    
+        if (formBusca) {
+            formBusca.addEventListener('submit', () => {
+                document.body.classList.add('loading');
+            });
+        }
+    });
+</script>
+     
+<script>
+    function abrirModalView(el) {
+        document.getElementById("view_nome").innerText = el.dataset.nome;
+        document.getElementById("view_idade").innerText = el.dataset.idade;
+        document.getElementById("view_credencial").innerText = el.dataset.credencial;
+        document.getElementById("view_pcg").innerText = el.dataset.pcg;
+        document.getElementById("view_grupo").innerText = el.dataset.grupo;
+        document.getElementById("view_observacoes").innerText = el.dataset.observacoes;
+        document.getElementById("view_status").innerText = el.dataset.status;
+    
+        new bootstrap.Modal(document.getElementById("modalView")).show();
+    }
+</script>
+
+<script>
+    function buscarCEP() {
+        const cep = document.getElementById("cep").value.replace(/\D/g, '');
+        if (cep.length !== 8) {
+            alert("CEP inválido");
+            return;
+        }
+    
+        fetch(`https://viacep.com.br/ws/${cep}/json/`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.erro) {
+                    alert("CEP não encontrado");
+                    return;
+                }
+                document.getElementById("logradouro").value = data.logradouro || '';
+                document.getElementById("bairro").value = data.bairro || '';
+                document.getElementById("cidade").value = data.localidade || '';
+                document.getElementById("uf").value = data.uf || '';
+            });
+    }
+</script>
+
+<script>
+    const map = L.map('mapaParticipantes').setView([-14.2350, -51.9253], 4);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+    
+    const participantes = '{{ participantes_json|safe }}';
+    
+    participantes.forEach(p => {
+        if (p.lat && p.lng) {
+            L.marker([p.lat, p.lng])
+                .addTo(map)
+                .bindPopup(`<b>${p.nome}</b><br>${p.cidade}/${p.uf}`);
+        }
+    });
+</script>
+
+<script>
+    function calcularIdade(dataNascimento) {
+        if (!dataNascimento) return '';
+
+        const hoje = new Date();
+        const nascimento = new Date(dataNascimento);
+
+        let idade = hoje.getFullYear() - nascimento.getFullYear();
+        const m = hoje.getMonth() - nascimento.getMonth();
+
+        if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
+            idade--;
+        }
+
+        return idade >= 0 ? idade : '';
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const inputNascimento = document.getElementById("data_nascimento");
+        const inputIdade = document.getElementById("idade");
+
+        if (inputNascimento && inputIdade) {
+            inputNascimento.addEventListener("change", () => {
+                inputIdade.value = calcularIdade(inputNascimento.value);
+            });
+        }
+    });
+</script>
+<script>
+    function buscarCEPEditar() {
+        const cep = document.getElementById("edit_cep").value.replace(/\D/g, '');
+
+        if (cep.length !== 8) {
+            alert("CEP inválido");
+            return;
+        }
+
+        fetch(`https://viacep.com.br/ws/${cep}/json/`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.erro) {
+                    alert("CEP não encontrado");
+                    return;
+                }
+                document.getElementById("edit_logradouro").value = data.logradouro || '';
+                document.getElementById("edit_bairro").value = data.bairro || '';
+                document.getElementById("edit_cidade").value = data.localidade || '';
+                document.getElementById("edit_uf").value = data.uf || '';
+            });
+    }
+</script>        
+{% endblock %}

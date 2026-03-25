@@ -1,0 +1,442 @@
+{% extends "layout.html" %}
+{% block conteudo %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="page-header">
+        <h2>Parceiros</h2>
+        <p class="page-subtitle">Gerencie os parceiros do sistema.</p>
+    </div> 
+    <div class="d-flex gap-2 flex-wrap">       
+        <button class="btn btn-success novo" onclick="abrirModalNovoParceiro()">
+            + Novo Parceiro
+        </button>
+    </div>
+</div>
+
+<div class="card shadow-sm p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <!-- BUSCA + FILTROS -->
+        <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+
+            <div class="search-container">
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="text" name="busca" class="search-input"
+                       placeholder="Buscar por nome ou e-mail..."
+                       value="{{ busca|default('') }}">
+            </div>
+
+            <select name="status" class="form-select filtro-select">
+                <option value="">Status</option>
+                <option value="Ativo"   {% if status_filtro|default('') == 'Ativo' %}selected{% endif %}>Ativo</option>
+                <option value="Inativo" {% if status_filtro|default('') == 'Inativo' %}selected{% endif %}>Inativo</option>
+            </select>
+
+            <button class="btn btn-primary">Filtrar</button>
+            <a href="{{ url_for('parceiros') }}" class="btn btn-warning btn-limpar">
+                Limpar
+            </a>           
+        </form>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>CNPJ</th>
+                <th>E-mail</th>
+                <th>Telefone</th>
+                <th>Status</th>
+                <th>Data Cadastro</th>
+                <th class="text-center colunatabela">View</th>
+                <th class="text-center colunatabela">Ações</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for p in parceiros %}
+            <tr class="{% if p.status == 'Inativo' %}tr-inativo{% endif %}">
+                <td>{{ p.nome }}</td>
+                <td>{{ p.cnpj or '-' }}</td>
+                <td>{{ p.email or '-' }}</td>
+                <td>{{ p.telefone or '-' }}</td>
+                <td>
+                    {% if p.status == 'Ativo' %}
+                        <span class="badge-status ativo">Ativo</span>
+                    {% else %}
+                        <span class="badge-status inativo">Inativo</span>
+                    {% endif %}
+                </td>
+                <td>{{ p.data_cadastro or '-' }}</td>
+
+                <!-- VIEW -->
+                <td class="text-center">
+                    <button class="view-btn"
+                            onclick="abrirModalViewParceiro(this)"
+                            data-nome="{{ p.nome }}"
+                            data-cnpj="{{ p.cnpj or '' }}"
+                            data-email="{{ p.email or '' }}"
+                            data-telefone="{{ p.telefone or '' }}"
+                            data-status="{{ p.status }}">
+                        <i class="ph ph-eye"></i>
+                    </button>
+                </td>
+
+                <!-- AÇÕES -->
+                <td class="text-center">
+                    <div class="dropdown">
+                        <button class="action-menu-btn" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+
+                            <!-- Editar -->
+                            <li>
+                                <a class="dropdown-item"
+                                   href="#"
+                                   onclick="abrirModalEditarParceiro(this)"
+                                   data-id="{{ p.id }}"
+                                   data-nome="{{ p.nome }}"
+                                   data-cnpj="{{ p.cnpj or '' }}"
+                                   data-email="{{ p.email or '' }}"
+                                   data-telefone="{{ p.telefone or '' }}"
+                                   data-status="{{ p.status }}">
+                                    <i class="ph ph-note-pencil"></i> Editar
+                                </a>
+                            </li>
+
+                            <!-- Ativar / Inativar -->
+                            {% if p.status == 'Ativo' %}
+                            <li>
+                                <a class="dropdown-item"
+                                   href="#"
+                                   onclick="confirmarInativarParceiro(this)"
+                                   data-id="{{ p.id }}"
+                                   data-nome="{{ p.nome }}">
+                                    <i class="ph ph-user-minus"></i> Inativar
+                                </a>
+                            </li>
+                            {% else %}
+                            <li>
+                                <a class="dropdown-item"
+                                   href="#"
+                                   onclick="confirmarAtivarParceiro(this)"
+                                   data-id="{{ p.id }}"
+                                   data-nome="{{ p.nome }}">
+                                    <i class="ph ph-user-plus"></i> Ativar
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            <!-- Excluir -->
+                            <li>
+                                <a class="dropdown-item text-danger"
+                                   href="#"
+                                   onclick="confirmarExcluirParceiro(this)"
+                                   data-id="{{ p.id }}"
+                                   data-nome="{{ p.nome }}">
+                                    <i class="ph ph-trash"></i> Excluir
+                                </a>
+                            </li>
+
+                        </ul>
+                    </div>
+                </td>
+
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+<!-- MODAL NOVO PARCEIRO -->
+<div class="modal fade" id="modalNovoParceiro" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content sixty-modal">
+      <div class="modal-header">
+        <h5 class="modal-title">Novo Parceiro</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('parceiros_novo') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" class="form-control" name="nome" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">CNPJ</label>
+            <input type="text" class="form-control" name="cnpj">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">E-mail</label>
+            <input type="email" class="form-control" name="email">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Telefone</label>
+            <input type="text" class="form-control" name="telefone">
+          </div>
+          <p class="text-muted small mb-0">
+            Será criado automaticamente um usuário <b>Master</b> para este parceiro usando o e-mail informado.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PARCEIRO -->
+<div class="modal fade" id="modalEditarParceiro" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content sixty-modal">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Parceiro</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="formEditarParceiro">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" class="form-control" name="nome" id="edit_nome" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">CNPJ</label>
+            <input type="text" class="form-control" name="cnpj" id="edit_cnpj">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">E-mail</label>
+            <input type="email" class="form-control" name="email" id="edit_email">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Telefone</label>
+            <input type="text" class="form-control" name="telefone" id="edit_telefone">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Status</label>
+            <select class="form-select" name="status" id="edit_status">
+              <option value="Ativo">Ativo</option>
+              <option value="Inativo">Inativo</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              Cancelar
+          </button>
+          <button class="btn btn-primary">Salvar Alterações</button>
+      </div>      
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VIEW PARCEIRO -->
+<div class="modal fade" id="modalViewParceiro" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content sixty-modal">
+      <div class="modal-header">
+        <h5 class="modal-title">Dados do Parceiro</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label fw-bold">Nome</label>
+          <div class="view-field" id="view_p_nome"></div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-bold">CNPJ</label>
+          <div class="view-field" id="view_p_cnpj"></div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-bold">E-mail</label>
+          <div class="view-field" id="view_p_email"></div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-bold">Telefone</label>
+          <div class="view-field" id="view_p_telefone"></div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-bold">Status</label>
+          <div class="view-field" id="view_p_status"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR INATIVAR -->
+<div class="modal fade" id="modalInativarParceiro" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content sixty-modal">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar Inativação</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Inativar o parceiro <b id="inativar_p_nome"></b>?
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <a id="btnConfirmarInativarParceiro" class="btn btn-warning">Inativar</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR ATIVAR -->
+<div class="modal fade" id="modalAtivarParceiro" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content sixty-modal">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar Ativação</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Ativar o parceiro <b id="ativar_p_nome"></b>?
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <a id="btnConfirmarAtivarParceiro" class="btn btn-success">Ativar</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR EXCLUIR -->
+<div class="modal fade" id="modalExcluirParceiro" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content sixty-modal">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger">Confirmar Exclusão</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Excluir o parceiro <b id="excluir_p_nome"></b>?<br>
+        <span class="text-danger small">Atenção: esta ação não poderá ser desfeita.</span>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <a id="btnConfirmarExcluirParceiro" class="btn btn-danger">Excluir</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MENSAGEM (para flash messages) -->
+<div class="modal fade" id="modalMensagem" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content sixty-modal">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalMensagemTitulo">Aviso</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modalMensagemTexto"></div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+  
+      // Apenas mensagens do módulo PARCEIROS
+      const mensagens = JSON.parse(`{{
+          get_flashed_messages(
+              with_categories=true,
+              category_filter=[
+                  "parceiro_success",
+                  "parceiro_warning",
+                  "parceiro_error"
+              ]
+          ) | tojson | safe
+      }}`);
+  
+      if (mensagens.length > 0) {
+  
+          const [categoria, mensagem] = mensagens[0];
+  
+          let titulo = "Aviso";
+          if (categoria.includes("success")) titulo = "Sucesso";
+          if (categoria.includes("error"))   titulo = "Erro";
+          if (categoria.includes("warning")) titulo = "Atenção";
+  
+          const tituloEl = document.getElementById("modalMensagemTitulo");
+          const textoEl  = document.getElementById("modalMensagemTexto");
+  
+          if (tituloEl && textoEl) {
+              tituloEl.innerText = titulo;
+              textoEl.innerText  = mensagem;
+  
+              const modalEl = document.getElementById("modalMensagem");
+              if (modalEl) {
+                  new bootstrap.Modal(modalEl).show();
+              }
+          }
+      }
+  });
+</script>
+  
+<script>
+function abrirModalNovoParceiro() {
+    const form = document.querySelector('#modalNovoParceiro form');
+    form.reset();
+    new bootstrap.Modal(document.getElementById('modalNovoParceiro')).show();
+}
+
+function abrirModalEditarParceiro(el) {
+    const id = el.dataset.id;
+    document.getElementById('edit_nome').value      = el.dataset.nome;
+    document.getElementById('edit_cnpj').value      = el.dataset.cnpj;
+    document.getElementById('edit_email').value     = el.dataset.email;
+    document.getElementById('edit_telefone').value  = el.dataset.telefone;
+    document.getElementById('edit_status').value    = el.dataset.status;
+
+    const form = document.getElementById('formEditarParceiro');
+    form.action = "/parceiros/editar/" + id;
+
+    new bootstrap.Modal(document.getElementById('modalEditarParceiro')).show();
+}
+
+function abrirModalViewParceiro(el) {
+    document.getElementById('view_p_nome').innerText      = el.dataset.nome;
+    document.getElementById('view_p_cnpj').innerText      = el.dataset.cnpj || '-';
+    document.getElementById('view_p_email').innerText     = el.dataset.email || '-';
+    document.getElementById('view_p_telefone').innerText  = el.dataset.telefone || '-';
+    document.getElementById('view_p_status').innerText    = el.dataset.status;
+
+    new bootstrap.Modal(document.getElementById('modalViewParceiro')).show();
+}
+
+function confirmarInativarParceiro(el) {
+    const id   = el.dataset.id;
+    const nome = el.dataset.nome;
+    document.getElementById('inativar_p_nome').innerText = nome;
+    document.getElementById('btnConfirmarInativarParceiro').href = "/parceiros/inativar/" + id;
+    new bootstrap.Modal(document.getElementById('modalInativarParceiro')).show();
+}
+
+function confirmarAtivarParceiro(el) {
+    const id   = el.dataset.id;
+    const nome = el.dataset.nome;
+    document.getElementById('ativar_p_nome').innerText = nome;
+    document.getElementById('btnConfirmarAtivarParceiro').href = "/parceiros/ativar/" + id;
+    new bootstrap.Modal(document.getElementById('modalAtivarParceiro')).show();
+}
+
+function confirmarExcluirParceiro(el) {
+    const id   = el.dataset.id;
+    const nome = el.dataset.nome;
+    document.getElementById('excluir_p_nome').innerText = nome;
+    document.getElementById('btnConfirmarExcluirParceiro').href = "/parceiros/excluir/" + id;
+    new bootstrap.Modal(document.getElementById('modalExcluirParceiro')).show();
+}
+</script>
+{% endblock %}

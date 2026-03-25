@@ -1,0 +1,201 @@
+{% extends "layout.html" %}
+{% block conteudo %}
+
+<!-- ========== BANNER ========== -->
+<div class="page-header mb-4">
+    <h2>Dashboard</h2>
+    <p class="page-subtitle">
+        Visão geral de programas, eventos e frequência
+    </p>
+</div>
+
+<!-- ========== CARDS DE KPIs (todos na mesma linha) ========== -->
+<div class="kpi-row-nowrap mb-4">
+
+    <div class="kpi-card">
+        <div class="card card-kpi card-kpi-animated shadow-sm position-relative">
+            <div class="card-kpi-label">Participantes</div>
+            <div class="card-kpi-value">{{ total_participantes }}</div>
+            <div class="card-kpi-sub">Total de participantes</div>
+            <div class="big-icon"><i class="ph ph-users"></i></div>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="card card-kpi card-kpi-animated shadow-sm position-relative">
+            <div class="card-kpi-label">Ativos</div>
+            <div class="card-kpi-value">{{ total_participantes_ativos }}</div>
+            <div class="card-kpi-sub">Participantes ativos no sistema</div>
+            <div class="big-icon"><i class="ph ph-check-circle"></i></div>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="card card-kpi card-kpi-animated shadow-sm position-relative">
+            <div class="card-kpi-label">Inativos</div>
+            <div class="card-kpi-value">{{ total_participantes_inativos }}</div>
+            <div class="card-kpi-sub">Participantes desativados</div>
+            <div class="big-icon"><i class="ph ph-x-circle"></i></div>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="card card-kpi card-kpi-animated shadow-sm position-relative">
+            <div class="card-kpi-label">Eventos</div>
+            <div class="card-kpi-value">{{ total_eventos }}</div>
+            <div class="card-kpi-sub">Eventos com agendas ativas</div>
+            <div class="big-icon"><i class="ph ph-calendar"></i></div>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="card card-kpi card-kpi-animated shadow-sm position-relative">
+            <div class="card-kpi-label">Agendas</div>
+            <div class="card-kpi-value">{{ total_agendas }}</div>
+            <div class="card-kpi-sub">Agendas com presença</div>
+            <div class="big-icon"><i class="ph ph-list-checks"></i></div>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="card card-kpi card-kpi-animated shadow-sm position-relative">
+            <div class="card-kpi-label">Grupos</div>
+            <div class="card-kpi-value">{{ total_grupos }}</div>
+            <div class="card-kpi-sub">Grupos com frequência</div>
+            <div class="big-icon"><i class="ph ph-users-four"></i></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ========== ACESSOS RÁPIDOS GRANDES ========== -->
+<div class="card p-4 shadow-sm mb-4">
+    <h5 class="mb-3 d-flex align-items-center"><i class="ph ph-lightning"></i> O que você deseja fazer agora?</h5>
+
+    <div class="row g-3">
+
+        <div class="col-md-3">
+            <a href="/participantes/novo" class="shortcut-tile">
+                <i class="ph ph-user-plus"></i>
+                <div class="shortcut-title">Novo Participante</div>
+                <div class="shortcut-sub">Cadastrar um novo participante no programa</div>
+            </a>
+        </div>
+
+        <div class="col-md-3">
+            <a href="/eventos/cadastrar" class="shortcut-tile shortcut-green">
+                <i class="ph ph-calendar-plus"></i>
+                <div class="shortcut-title">Novo Evento</div>
+                <div class="shortcut-sub">Criar um novo evento ou atividade</div>
+            </a>
+        </div>
+
+        <div class="col-md-3">
+            <a href="/painel" class="shortcut-tile shortcut-purple">
+                <i class="ph ph-chart-line"></i>
+                <div class="shortcut-title">Painel Geral</div>
+                <div class="shortcut-sub">Analisar presenças e grupos</div>
+            </a>
+        </div>
+
+        <div class="col-md-3">
+            <a href="/ranking" class="shortcut-tile shortcut-blue">
+                <i class="ph ph-trophy"></i>
+                <div class="shortcut-title">Ranking</div>
+                <div class="shortcut-sub">Ver quem mais participa</div>
+            </a>
+        </div>
+
+    </div>
+</div>
+
+<!-- ========== ÚLTIMOS EVENTOS ========== -->
+<div class="card p-4 shadow-sm">
+    <h5 class="mb-3 d-flex align-items-center"><i class="ph ph-calendar"></i> Últimas agendas criadas</h5>
+
+{% if ultimas_agendas %}
+<table class="table table-hover align-middle">
+    <thead>
+        <tr>
+            <th>Agenda</th>
+            <th>Evento</th>
+            <th>Data de Início</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for a in ultimas_agendas %}
+        <tr>
+            <td>{{ a.nome_agenda }}</td>
+            <td>{{ a.evento_nome }}</td>
+            <td>{{ a.data_inicio }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-muted">Nenhuma agenda cadastrada ainda.</p>
+{% endif %}
+
+</div>
+
+<!-- ========== DADOS DOS SPARKS EM JSON ========== -->
+<script type="application/json" id="spark-labels-json">
+    {{ spark_labels | tojson }}
+</script>
+<script type="application/json" id="spark-part-json">
+    {{ spark_part | tojson }}
+</script>
+<script type="application/json" id="spark-grupo-json">
+    {{ spark_grupo | tojson }}
+</script>
+<script type="application/json" id="spark-evento-json">
+    {{ spark_evento | tojson }}
+</script>
+<script type="application/json" id="spark-agenda-json">
+    {{ spark_agenda | tojson }}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+function renderSparkline(id, data, labels) {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+
+    new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                borderWidth: 2,
+                tension: 0.4
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { display: false },
+                y: { display: false }
+            },
+            elements: {
+                point: { radius: 0 }
+            }
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const labels  = JSON.parse(document.getElementById("spark-labels-json").textContent || "[]");
+    const part    = JSON.parse(document.getElementById("spark-part-json").textContent || "[]");
+    const grupo   = JSON.parse(document.getElementById("spark-grupo-json").textContent || "[]");
+    const evento  = JSON.parse(document.getElementById("spark-evento-json").textContent || "[]");
+    const agenda  = JSON.parse(document.getElementById("spark-agenda-json").textContent || "[]");
+
+    renderSparkline("spark-part", part, labels);
+    renderSparkline("spark-grupo", grupo, labels);
+    renderSparkline("spark-evento", evento, labels);
+    renderSparkline("spark-agenda", agenda, labels);
+});
+</script>
+{% endblock %}

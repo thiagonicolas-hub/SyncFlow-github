@@ -2,7 +2,6 @@ from flask import Flask, render_template, redirect, request, session, url_for, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from datetime import date
-import datetime as dt
 import webbrowser
 from threading import Timer
 import csv
@@ -30,20 +29,20 @@ from flask import get_flashed_messages
 def _sf_parse_date(value):
     if value is None:
         return None
-    if isinstance(value, (dt.date, dt.datetime)):
-        return value if isinstance(value, dt.datetime) else dt.datetime.combine(value, dt.time.min)
+    if isinstance(value, (datetime.date, datetime.datetime)):
+        return value if isinstance(value, datetime.datetime) else datetime.datetime.combine(value, datetime.time.min)
     s = str(value).strip()
     if not s:
         return None
     # tenta formatos comuns
     for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%d/%m/%Y", "%d/%m/%Y %H:%M:%S"):
         try:
-            return dt.datetime.strptime(s[:19], fmt)
+            return datetime.datetime.strptime(s[:19], fmt)
         except Exception:
             pass
     # tenta fromisoformat (Python 3.11+ lida bem com ISO)
     try:
-        return dt.datetime.fromisoformat(s)
+        return datetime.datetime.fromisoformat(s)
     except Exception:
         return None
 
@@ -60,10 +59,10 @@ def _sf_year(value):
     return int(d.year) if d else None
 
 def _sf_curdate():
-    return dt.date.today().isoformat()
+    return datetime.date.today().isoformat()
 
 def _sf_now():
-    return dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 def _sf_datediff(d1, d2):
     a = _sf_parse_date(d1)
@@ -104,7 +103,7 @@ def get_db_path() -> Path:
     Caminho do banco SQLite.
 
     - Em dev: ./data/syncflow.db
-    - Empacotado (EXE): ./data/syncflow.db (na mesma pasta do .exe)
+    - Empacotado (EXE): %APPDATA%/SyncFlow/syncflow.db
     """
     env = os.getenv("SQLITE_PATH")
     if env:
@@ -112,20 +111,17 @@ def get_db_path() -> Path:
         p.parent.mkdir(parents=True, exist_ok=True)
         return p
 
-    base_dir = Path(sys.executable).resolve().parent if _is_frozen() else Path(__file__).resolve().parent
-    data_dir = base_dir / "data"
+    if _is_frozen():
+        base = Path(os.getenv("APPDATA", str(Path.home())))
+        data_dir = base / APP_NAME
+    else:
+        data_dir = Path(__file__).resolve().parent / "data"
+
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir / "syncflow.db"
-def _connect_sqlite():
-    conn = sqlite3.connect(str(get_db_path()), check_same_thread=False, timeout=10)
-    try:
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA synchronous=NORMAL;")
-        conn.execute("PRAGMA temp_store=MEMORY;")
-        conn.execute("PRAGMA busy_timeout=5000;")
-    except Exception:
-        pass
 
+def _connect_sqlite():
+    conn = sqlite3.connect(str(get_db_path()), check_same_thread=False)
 
     # registra funções compatíveis com MySQL (evita quebrar queries antigas)
     try:
@@ -493,11 +489,6 @@ def inject_eventos_menu():
 # -----------------------------
 @app.route("/setup", methods=["GET", "POST"])
 def setup():
-    """
-    Setup inicial (primeiro acesso)
-    - Cria APENAS o primeiro usuário Administrador, sem parceiro vinculado.
-    - Depois, o Administrador cria parceiros/usuários pelo próprio sistema.
-    """
     # se já existe admin, não precisa mais
     try:
         if contar_admins() > 0:
@@ -507,31 +498,34 @@ def setup():
         pass
 
     if request.method == "POST":
+        parceiro_nome = (request.form.get("parceiro_nome") or "").strip()
+        parceiro_cnpj = (request.form.get("parceiro_cnpj") or "").strip() or None
+        parceiro_email = (request.form.get("parceiro_email") or "").strip() or None
+        parceiro_tel = (request.form.get("parceiro_telefone") or "").strip() or None
+
         admin_nome = (request.form.get("admin_nome") or "").strip()
         admin_email = (request.form.get("admin_email") or "").strip().lower()
         admin_senha = (request.form.get("admin_senha") or "").strip()
 
-        if not admin_nome or not admin_email or not admin_senha:
+        if not parceiro_nome or not admin_nome or not admin_email or not admin_senha:
             flash("Preencha todos os campos obrigatórios.", "login")
         else:
             conn = get_db()
             try:
-                # evita duplicidade por e-mail
-                existe = conn.execute(
-                    "SELECT id FROM usuarios WHERE LOWER(email) = %s",
-                    (admin_email,)
-                ).fetchone()
-                if existe:
-                    flash("Já existe um usuário com este e-mail.", "login")
-                    return redirect(url_for("setup"))
+                # cria parceiro
+                cur = conn.execute("""
+                    INSERT INTO parceiros (nome, cnpj, email, telefone, status)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (parceiro_nome, parceiro_cnpj, parceiro_email, parceiro_tel, "Ativo"))
 
+                parceiro_id = cur.lastrowid
+
+                # cria admin
                 senha_hash = generate_password_hash(admin_senha)
-
-                # cria admin SEM parceiro
                 conn.execute("""
                     INSERT INTO usuarios (nome, email, senha_hash, tipo, status, parceiro_id)
                     VALUES (%s, %s, %s, %s, %s, %s)
-                """, (admin_nome, admin_email, senha_hash, "Administrador", "Ativo", None))
+                """, (admin_nome, admin_email, senha_hash, "Administrador", "Ativo", parceiro_id))
 
                 conn.commit()
                 flash("Administrador criado com sucesso! Faça login.", "login")
@@ -553,11 +547,11 @@ def setup():
       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body class="bg-light">
-      <div class="container py-5" style="max-width: 640px;">
+      <div class="container py-5" style="max-width: 720px;">
         <div class="card shadow-sm">
           <div class="card-body p-4">
-            <h4 class="mb-2">Primeiro acesso</h4>
-            <p class="text-muted mb-4">Crie o primeiro administrador do sistema.</p>
+            <h4 class="mb-3">Primeiro acesso</h4>
+            <p class="text-muted mb-4">Crie o parceiro e o primeiro administrador do sistema.</p>
 
             {% with messages = get_flashed_messages(category_filter=['login']) %}
               {% if messages %}
@@ -566,6 +560,29 @@ def setup():
             {% endwith %}
 
             <form method="post">
+              <h6 class="mt-2">Parceiro</h6>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label">Nome *</label>
+                  <input class="form-control" name="parceiro_nome" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">CNPJ</label>
+                  <input class="form-control" name="parceiro_cnpj">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">E-mail</label>
+                  <input class="form-control" name="parceiro_email" type="email">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Telefone</label>
+                  <input class="form-control" name="parceiro_telefone">
+                </div>
+              </div>
+
+              <hr class="my-4">
+
+              <h6>Administrador</h6>
               <div class="row g-2">
                 <div class="col-md-6">
                   <label class="form-label">Nome *</label>
@@ -575,7 +592,7 @@ def setup():
                   <label class="form-label">E-mail *</label>
                   <input class="form-control" name="admin_email" type="email" required>
                 </div>
-                <div class="col-12">
+                <div class="col-md-6">
                   <label class="form-label">Senha *</label>
                   <input class="form-control" name="admin_senha" type="password" required>
                 </div>
@@ -583,10 +600,6 @@ def setup():
 
               <div class="d-grid mt-4">
                 <button class="btn btn-primary btn-lg">Criar administrador</button>
-              </div>
-
-              <div class="mt-3 text-muted small">
-                Dica: após o login, você poderá cadastrar os parceiros e usuários pelo painel do Administrador.
               </div>
             </form>
           </div>
@@ -596,9 +609,7 @@ def setup():
     </html>
     """)
 
-
 # Login
-
 # -----------------------------
 @app.route("/", methods=["GET", "POST"])
 @app.route("/login", methods=["GET", "POST"])
@@ -5527,12 +5538,6 @@ def _start_server():
         init_db()
     except Exception as e:
         print("ERRO ao inicializar banco SQLite:", e)
-
-    # mostra onde o banco está (útil para suporte)
-    try:
-        print("SQLite DB:", str(get_db_path()))
-    except Exception:
-        pass
 
     host = os.getenv("HOST", "0.0.0.0")
     try:

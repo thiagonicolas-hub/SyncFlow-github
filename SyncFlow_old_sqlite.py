@@ -2,7 +2,6 @@ from flask import Flask, render_template, redirect, request, session, url_for, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from datetime import date
-import datetime as dt
 import webbrowser
 from threading import Timer
 import csv
@@ -26,51 +25,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import get_flashed_messages
 # Compatibilidade: werkzeug 2.x tinha url_parse; werkzeug 3.x removeu.
-# --- SQLITE_COMPAT_FUNCS ---
-def _sf_parse_date(value):
-    if value is None:
-        return None
-    if isinstance(value, (dt.date, dt.datetime)):
-        return value if isinstance(value, dt.datetime) else dt.datetime.combine(value, dt.time.min)
-    s = str(value).strip()
-    if not s:
-        return None
-    # tenta formatos comuns
-    for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%d/%m/%Y", "%d/%m/%Y %H:%M:%S"):
-        try:
-            return dt.datetime.strptime(s[:19], fmt)
-        except Exception:
-            pass
-    # tenta fromisoformat (Python 3.11+ lida bem com ISO)
-    try:
-        return dt.datetime.fromisoformat(s)
-    except Exception:
-        return None
-
-def _sf_day(value):
-    d = _sf_parse_date(value)
-    return int(d.day) if d else None
-
-def _sf_month(value):
-    d = _sf_parse_date(value)
-    return int(d.month) if d else None
-
-def _sf_year(value):
-    d = _sf_parse_date(value)
-    return int(d.year) if d else None
-
-def _sf_curdate():
-    return dt.date.today().isoformat()
-
-def _sf_now():
-    return dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-def _sf_datediff(d1, d2):
-    a = _sf_parse_date(d1)
-    b = _sf_parse_date(d2)
-    if not a or not b:
-        return None
-    return int((a.date() - b.date()).days)
 try:
     from werkzeug.urls import url_parse  # type: ignore
 except Exception:
@@ -104,7 +58,7 @@ def get_db_path() -> Path:
     Caminho do banco SQLite.
 
     - Em dev: ./data/syncflow.db
-    - Empacotado (EXE): ./data/syncflow.db (na mesma pasta do .exe)
+    - Empacotado (EXE): %APPDATA%\SyncFlow\syncflow.db
     """
     env = os.getenv("SQLITE_PATH")
     if env:
@@ -112,34 +66,17 @@ def get_db_path() -> Path:
         p.parent.mkdir(parents=True, exist_ok=True)
         return p
 
-    base_dir = Path(sys.executable).resolve().parent if _is_frozen() else Path(__file__).resolve().parent
-    data_dir = base_dir / "data"
+    if _is_frozen():
+        base = Path(os.getenv("APPDATA", str(Path.home())))
+        data_dir = base / APP_NAME
+    else:
+        data_dir = Path(__file__).resolve().parent / "data"
+
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir / "syncflow.db"
+
 def _connect_sqlite():
-    conn = sqlite3.connect(str(get_db_path()), check_same_thread=False, timeout=10)
-    try:
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA synchronous=NORMAL;")
-        conn.execute("PRAGMA temp_store=MEMORY;")
-        conn.execute("PRAGMA busy_timeout=5000;")
-    except Exception:
-        pass
-
-
-    # registra funções compatíveis com MySQL (evita quebrar queries antigas)
-    try:
-        conn.create_function("DAY", 1, _sf_day)
-        conn.create_function("MONTH", 1, _sf_month)
-        conn.create_function("YEAR", 1, _sf_year)
-        conn.create_function("CURDATE", 0, _sf_curdate)
-        conn.create_function("NOW", 0, _sf_now)
-        conn.create_function("DATEDIFF", 2, _sf_datediff)
-    except Exception:
-        pass
-
-
-
+    conn = sqlite3.connect(str(get_db_path()), check_same_thread=False)
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
@@ -370,30 +307,14 @@ class DB:
         self.cur = _SQLiteDictCursor(self.conn.cursor())
 
     def _translate_sql(self, sql: str) -> str:
-        # NOW() - INTERVAL n DAY -> datetime('now','-n day')
-        sql = re.sub(
-            r"NOW\(\)\s*-\s*INTERVAL\s*(\d+)\s*DAY",
-            r"datetime('now','-\1 day')",
-            sql,
-            flags=re.IGNORECASE
-        )
-
-        # CURDATE() - INTERVAL n DAY -> date('now','-n day')
-        sql = re.sub(
-            r"CURDATE\(\)\s*-\s*INTERVAL\s*(\d+)\s*DAY",
-            r"date('now','-\1 day')",
-            sql,
-            flags=re.IGNORECASE
-        )
-
         # NOW() -> datetime('now')
         sql = re.sub(r"\bNOW\(\)", "datetime('now')", sql, flags=re.IGNORECASE)
         # CURDATE() -> date('now')
         sql = re.sub(r"\bCURDATE\(\)", "date('now')", sql, flags=re.IGNORECASE)
 
-        # datetime('now') - INTERVAL n DAY (fallback) -> datetime('now','-n day')
+        # NOW() - INTERVAL n DAY -> datetime('now','-n day')
         sql = re.sub(
-            r"datetime\('now'\)\s*-\s*INTERVAL\s*(\d+)\s*DAY",
+            r"NOW\(\)\s*-\s*INTERVAL\s*(\d+)\s*DAY",
             r"datetime('now','-\1 day')",
             sql,
             flags=re.IGNORECASE
@@ -493,11 +414,6 @@ def inject_eventos_menu():
 # -----------------------------
 @app.route("/setup", methods=["GET", "POST"])
 def setup():
-    """
-    Setup inicial (primeiro acesso)
-    - Cria APENAS o primeiro usuário Administrador, sem parceiro vinculado.
-    - Depois, o Administrador cria parceiros/usuários pelo próprio sistema.
-    """
     # se já existe admin, não precisa mais
     try:
         if contar_admins() > 0:
@@ -507,31 +423,34 @@ def setup():
         pass
 
     if request.method == "POST":
+        parceiro_nome = (request.form.get("parceiro_nome") or "").strip()
+        parceiro_cnpj = (request.form.get("parceiro_cnpj") or "").strip() or None
+        parceiro_email = (request.form.get("parceiro_email") or "").strip() or None
+        parceiro_tel = (request.form.get("parceiro_telefone") or "").strip() or None
+
         admin_nome = (request.form.get("admin_nome") or "").strip()
         admin_email = (request.form.get("admin_email") or "").strip().lower()
         admin_senha = (request.form.get("admin_senha") or "").strip()
 
-        if not admin_nome or not admin_email or not admin_senha:
+        if not parceiro_nome or not admin_nome or not admin_email or not admin_senha:
             flash("Preencha todos os campos obrigatórios.", "login")
         else:
             conn = get_db()
             try:
-                # evita duplicidade por e-mail
-                existe = conn.execute(
-                    "SELECT id FROM usuarios WHERE LOWER(email) = %s",
-                    (admin_email,)
-                ).fetchone()
-                if existe:
-                    flash("Já existe um usuário com este e-mail.", "login")
-                    return redirect(url_for("setup"))
+                # cria parceiro
+                cur = conn.execute("""
+                    INSERT INTO parceiros (nome, cnpj, email, telefone, status)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (parceiro_nome, parceiro_cnpj, parceiro_email, parceiro_tel, "Ativo"))
 
+                parceiro_id = cur.lastrowid
+
+                # cria admin
                 senha_hash = generate_password_hash(admin_senha)
-
-                # cria admin SEM parceiro
                 conn.execute("""
                     INSERT INTO usuarios (nome, email, senha_hash, tipo, status, parceiro_id)
                     VALUES (%s, %s, %s, %s, %s, %s)
-                """, (admin_nome, admin_email, senha_hash, "Administrador", "Ativo", None))
+                """, (admin_nome, admin_email, senha_hash, "Administrador", "Ativo", parceiro_id))
 
                 conn.commit()
                 flash("Administrador criado com sucesso! Faça login.", "login")
@@ -553,11 +472,11 @@ def setup():
       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body class="bg-light">
-      <div class="container py-5" style="max-width: 640px;">
+      <div class="container py-5" style="max-width: 720px;">
         <div class="card shadow-sm">
           <div class="card-body p-4">
-            <h4 class="mb-2">Primeiro acesso</h4>
-            <p class="text-muted mb-4">Crie o primeiro administrador do sistema.</p>
+            <h4 class="mb-3">Primeiro acesso</h4>
+            <p class="text-muted mb-4">Crie o parceiro e o primeiro administrador do sistema.</p>
 
             {% with messages = get_flashed_messages(category_filter=['login']) %}
               {% if messages %}
@@ -566,6 +485,29 @@ def setup():
             {% endwith %}
 
             <form method="post">
+              <h6 class="mt-2">Parceiro</h6>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label">Nome *</label>
+                  <input class="form-control" name="parceiro_nome" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">CNPJ</label>
+                  <input class="form-control" name="parceiro_cnpj">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">E-mail</label>
+                  <input class="form-control" name="parceiro_email" type="email">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Telefone</label>
+                  <input class="form-control" name="parceiro_telefone">
+                </div>
+              </div>
+
+              <hr class="my-4">
+
+              <h6>Administrador</h6>
               <div class="row g-2">
                 <div class="col-md-6">
                   <label class="form-label">Nome *</label>
@@ -575,7 +517,7 @@ def setup():
                   <label class="form-label">E-mail *</label>
                   <input class="form-control" name="admin_email" type="email" required>
                 </div>
-                <div class="col-12">
+                <div class="col-md-6">
                   <label class="form-label">Senha *</label>
                   <input class="form-control" name="admin_senha" type="password" required>
                 </div>
@@ -583,10 +525,6 @@ def setup():
 
               <div class="d-grid mt-4">
                 <button class="btn btn-primary btn-lg">Criar administrador</button>
-              </div>
-
-              <div class="mt-3 text-muted small">
-                Dica: após o login, você poderá cadastrar os parceiros e usuários pelo painel do Administrador.
               </div>
             </form>
           </div>
@@ -596,9 +534,7 @@ def setup():
     </html>
     """)
 
-
 # Login
-
 # -----------------------------
 @app.route("/", methods=["GET", "POST"])
 @app.route("/login", methods=["GET", "POST"])
@@ -838,15 +774,15 @@ def admin_home():
 
         logs = conn.execute("""
             SELECT 
-                a.id,
-                COALESCE(u.nome, a.usuario_nome) AS usuario,
+                l.id,
+                u.nome AS usuario,
                 p.nome AS parceiro,
-                a.acao,
-                a.criado_em AS data
-            FROM auditoria a
-            LEFT JOIN usuarios u ON u.id = a.usuario_id
-            LEFT JOIN parceiros p ON p.id = a.parceiro_id
-            ORDER BY a.id DESC
+                l.acao,
+                l.data
+            FROM logs_suporte l
+            LEFT JOIN usuarios u ON u.id = l.usuario_id
+            LEFT JOIN parceiros p ON p.id = l.parceiro_id
+            ORDER BY l.id DESC
             LIMIT 20
         """).fetchall()
 
@@ -5418,40 +5354,6 @@ def inject_notificacoes():
         "notificacoes": notificacoes,
         "notificacoes_nao_lidas": len(notificacoes)
     }
-@app.route("/notificacoes/abrir/<int:id>")
-def abrir_notificacao(id):
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))
-
-    parceiro_id = session["parceiro_id"]
-    conn = get_db()
-
-    notif = conn.execute("""
-        SELECT id, link
-        FROM notificacoes
-        WHERE id = %s AND parceiro_id = %s
-    """, (id, parceiro_id)).fetchone()
-
-    if not notif:
-        conn.close()
-        return redirect(url_for("home"))
-
-    conn.execute("""
-        UPDATE notificacoes
-        SET lida = 1
-        WHERE id = %s AND parceiro_id = %s
-    """, (id, parceiro_id))
-
-    conn.commit()
-    conn.close()
-
-    link = (notif.get("link") or "").strip()
-
-    # 🔐 segurança: só permite URL interna
-    if link and url_parse(link).netloc == "":
-        return redirect(link)
-
-    return redirect(url_for("home"))
 
 def gerar_notificacoes_aniversario(conn):
     aniversariantes = conn.execute("""
@@ -5517,45 +5419,48 @@ def notificacoes_historico():
         "notificacoes.html",
         notificacoes=notificacoes
     )
+@app.route("/notificacoes/abrir/<int:id>")
+def abrir_notificacao(id):
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
 
-# ==========================
-# ENTRYPOINT (rodar local / empacotar)
-# ==========================
-def _start_server():
-    # garante schema criado
-    try:
-        init_db()
-    except Exception as e:
-        print("ERRO ao inicializar banco SQLite:", e)
+    parceiro_id = session["parceiro_id"]
+    conn = get_db()
 
-    # mostra onde o banco está (útil para suporte)
-    try:
-        print("SQLite DB:", str(get_db_path()))
-    except Exception:
-        pass
+    notif = conn.execute("""
+        SELECT id, link
+        FROM notificacoes
+        WHERE id = %s AND parceiro_id = %s
+    """, (id, parceiro_id)).fetchone()
 
-    host = os.getenv("HOST", "0.0.0.0")
-    try:
-        port = int(os.getenv("PORT", "5000"))
-    except Exception:
-        port = 5000
+    if not notif:
+        conn.close()
+        return redirect(url_for("home"))
 
-    env = (os.getenv("APP_ENV", "dev") or "dev").lower()
-    debug = env in ("dev", "development")
+    conn.execute("""
+        UPDATE notificacoes
+        SET lida = 1
+        WHERE id = %s AND parceiro_id = %s
+    """, (id, parceiro_id))
 
-    # Preferir waitress (mais estável em EXE). Se não existir, usa Flask dev server.
-    use_waitress = os.getenv("USE_WAITRESS", "1") == "1"
-    if use_waitress:
-        try:
-            from waitress import serve
-            print(f"SyncFlow (SQLite) rodando em http://127.0.0.1:{port}")
-            serve(app, host=host, port=port)
-            return
-        except Exception:
-            pass
+    conn.commit()
+    conn.close()
 
-    print(f"SyncFlow (SQLite) rodando em http://127.0.0.1:{port}")
-    app.run(host=host, port=port, debug=debug, use_reloader=False)
+    link = (notif.get("link") or "").strip()
+
+    # 🔐 segurança: só permite URL interna
+    if link and url_parse(link).netloc == "":
+        return redirect(link)
+
+    return redirect(url_for("home"))
+
 
 if __name__ == "__main__":
-    _start_server()
+    init_db()
+    app.run(host="0.0.0.0", port=5000, debug=False)
+    
+
+
+
+
+

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SyncFlow</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Fontes & Icons -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.1/css/all.css">
+    <link rel="stylesheet" href="https://unpkg.com/phosphor-icons@1.4.2/src/css/icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Lato&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+
+    <!-- CSS do Tema -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">    
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- jQuery Toast -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.js"></script>
+</head>
+
+<body>
+
+<!-- ================================
+     MENU LATERAL FIXO
+================================ -->
+<div class="sidebar">
+
+    <div class="sidebar-title">
+        <div class="sidebar-title text-center" >
+            <a href="{{ url_for('home') }}" style="text-decoration:none;">
+                <img src="{{ url_for('static', filename='img/logo09.png') }}"
+                     alt="SyncFlow"
+                     style="max-width:230px; display:block;">                   
+            </a>
+        </div>
+    </div>
+    <div class="sidebar-menuadm">
+    {% set tipo = session.get('usuario_tipo') %}
+
+        {% if tipo == 'Administrador' %}
+
+            <!-- ==========================
+                MENU DO ADMINISTRADOR
+            =========================== -->
+            <a href="{{ url_for('admin_home') }}" 
+            class="link-sidebar {% if request.endpoint == 'admin_home' %}active{% endif %}">
+                <i class="fas fa-home"></i><span>Dashboard Admin</span>
+            </a>
+
+            <a href="/participantes" 
+            class="link-sidebar {% if request.path == '/participantes' %}active{% endif %}">
+                <i class="fas fa-users"></i><span>Participantes</span>
+            </a>
+
+            <a href="/parceiros" 
+            class="link-sidebar {% if request.path.startswith('/parceiros') %}active{% endif %}">
+                <i class="ph ph-buildings"></i>
+                <span>Parceiros</span>
+            </a>
+
+            <a href="/usuarios" 
+            class="link-sidebar {% if request.path.startswith('/usuarios') %}active{% endif %}">
+                <i class="ph ph-users"></i>
+                <span>Usuários</span>
+            </a>
+
+            <a href="/auditoria" 
+            class="link-sidebar {% if request.path.startswith('/auditoria') %}active{% endif %}">
+                <i class="ph ph-file-magnifying-glass"></i>
+                <span>Auditoria</span>
+            </a>
+
+        {% else %}
+   
+            <!-- ==========================
+                MENU NORMAL (PARCEIROS)
+            =========================== -->
+
+            {% set current_path = request.path %}
+
+            <a href="/home" class="link-sidebar {% if request.endpoint == 'home' %}active{% endif %}">
+                <i class="fas fa-home"></i><span>Home</span>
+            </a>           
+
+            <!-- MENU EVENTOS COM SUBMENU -->
+            <div id="menu-eventos"
+                class="link-sidebar {% if current_path.startswith('/eventos') %}active{% endif %}">
+                <i class="ph ph-calendar-plus"></i>
+                <span>Eventos</span>
+                <i id="seta-eventos" class="ph ph-caret-down submenu-arrow"></i>
+            </div>
+
+            <div id="submenu-eventos"
+                class="submenu {% if current_path.startswith('/eventos') %}submenu-open{% endif %}">
+                <a href="{{ url_for('eventos_cadastrar') }}"
+                class="submenu-item {% if current_path == url_for('eventos_cadastrar') %}active{% endif %}">
+                    <i class="ph ph-plus"></i> Cadastrar Evento
+                </a>
+
+                {% for ev in menu_eventos %}
+                    <a href="{{ url_for('eventos_agendamento', evento_id=ev['id']) }}"
+                    class="submenu-item {% if current_path == url_for('eventos_agendamento', evento_id=ev['id']) %}active{% endif %}">
+                        <i class="ph ph-caret-right"></i> {{ ev['nome'] }}
+                    </a>
+                {% endfor %}
+            </div>
+            
+            <a href="/painel" class="link-sidebar {% if request.path.startswith('/painel') %}active{% endif %}">
+                <i class="fas fa-chart-line"></i><span>Painel</span>
+            </a>
+
+            <a href="/ranking" class="link-sidebar {% if request.path.startswith('/ranking') %}active{% endif %}">
+                <i class="ph ph-trophy"></i><span>Ranking</span>
+            </a>
+
+            <a href="/participantes" class="link-sidebar {% if request.path == '/participantes' %}active{% endif %}">
+                <i class="fas fa-users"></i><span>Participantes</span>
+            </a>
+
+        {% endif %}
+
+        <a href="/logout" class="link-sidebar">
+            <i class="fas fa-sign-out-alt"></i><span>Sair</span>
+        </a>
+    </div>
+</div>
+
+<!-- ================================
+     BARRA SUPERIOR DO CONTEÚDO
+================================ -->
+<div class="topbar-user">
+    <i class="ph ph-user-circle"></i>
+
+    <strong>{{ session['usuario_nome'] }}</strong>
+
+    {% if session.get('usuario_tipo') == 'Administrador' %}
+        <span style="margin-left: 10px; opacity: 0.8;">
+            | Administrador Global
+        </span>
+    {% else %}
+        {% if session.get('parceiro_nome') %}
+            <span style="margin-left: 10px; opacity: 0.8;">
+                | {{ session['parceiro_nome'] }}
+            </span>
+        {% endif %}
+    {% endif %}
+
+    {% set em_notificacoes = request.endpoint == 'notificacoes_historico' %}
+
+    <div class="dropdown">
+
+        {% if em_notificacoes %}
+            <!-- 🔔 SINO SEM DROPDOWN -->
+            <a href="{{ url_for('notificacoes_historico') }}"
+            class="nav-link text-muted"
+            title="Você já está no histórico de notificações">
+                <i class="fa fa-bell"></i>
+            </a>
+        {% else %}
+            <!-- 🔔 SINO COM DROPDOWN -->
+            <a href="#" class="nav-link" data-bs-toggle="dropdown">
+                <i class="fa fa-bell"></i>
+
+                {% if notificacoes_nao_lidas|default(0) > 0 %}
+                    <span class="badge bg-danger">
+                        {{ notificacoes_nao_lidas }}
+                    </span>
+                {% endif %}
+            </a>
+
+            <div class="dropdown-menu dropdown-menu-end">
+
+                {% for n in notificacoes %}
+                    <a class="dropdown-item"
+                    href="{{ url_for('abrir_notificacao', id=n.id) }}">
+                        {{ n.mensagem }}
+                    </a>
+                {% else %}
+                    <span class="dropdown-item text-muted">
+                        Nenhuma notificação
+                    </span>
+                {% endfor %}
+
+                <div class="dropdown-divider"></div>
+
+                <a class="dropdown-item text-center fw-bold"
+                href="{{ url_for('notificacoes_historico') }}">
+                    Ver histórico
+                </a>
+
+            </div>
+        {% endif %}
+
+    </div>   
+    
+</div>
+
+<!-- ================================
+     ÁREA DE CONTEÚDO
+================================ -->
+<div class="content-sixtyplus">
+
+    {% block conteudo %}{% endblock %}
+
+    <!-- FOOTER -->
+    <footer class="app-footer text-center">
+        © 2025 SyncFlow · by Synchronize
+    </footer>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+    
+        const menuEventos   = document.getElementById("menu-eventos");
+        const submenuEventos = document.getElementById("submenu-eventos");
+        const seta          = document.getElementById("seta-eventos");
+    
+        if (!menuEventos || !submenuEventos || !seta) {
+            return; // em telas onde não existe menu de eventos
+        }
+    
+        const currentPath = "{{ request.path }}";
+        const inEventos   = currentPath.startsWith("/eventos");
+    
+        // Se já está em /eventos/... vindo do servidor, mantém aberto
+        if (inEventos) {
+            menuEventos.classList.add("active");
+            submenuEventos.classList.add("submenu-open");
+            seta.style.transform = "rotate(180deg)";
+        }
+    
+        menuEventos.addEventListener("click", function () {
+            const isOpen = submenuEventos.classList.contains("submenu-open");
+    
+            if (isOpen) {
+                // FECHAR SUBMENU
+                submenuEventos.classList.remove("submenu-open");
+                seta.style.transform = "rotate(0deg)";
+    
+                // Se não estiver numa rota /eventos, tira o active do cabeçalho
+                if (!inEventos) {
+                    menuEventos.classList.remove("active");
+                }
+            } else {
+                // 👉 ANTES de abrir, remove "active" de TODOS os outros links do menu
+                document.querySelectorAll('.sidebar .link-sidebar.active').forEach(function (el) {
+                    if (el !== menuEventos) {
+                        el.classList.remove('active');
+                    }
+                });
+    
+                // ABRIR SUBMENU + marcar Eventos
+                menuEventos.classList.add("active");
+                submenuEventos.classList.add("submenu-open");
+                seta.style.transform = "rotate(180deg)";
+            }
+        });
+    
+    });
+</script> 
+
+<script>
+    function showToast(type, message) {
+        $.toast({
+            heading: type === 'success' ? 'Sucesso' : 'Aviso',
+            text: message,
+            position: 'top-center',   // CENTRALIZADO NO TOPO
+            loaderBg: '#50b949',
+            icon: type,               // success | error | info | warning
+            hideAfter: 4000,
+            stack: 3,
+            allowToastClose: true
+        });
+    }
+</script>
+        
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <script>
+      const flashes = JSON.parse('{{ messages|tojson|safe }}');
+      flashes.forEach(([category, message]) => {
+        showToast(category, message);
+      });
+    </script>
+  {% endif %}
+{% endwith %}
+ 
+</body>
+</html>

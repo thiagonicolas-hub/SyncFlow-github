@@ -1,0 +1,328 @@
+{% extends "layout.html" %}
+{% block conteudo %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="page-header">
+        <h2>Grupos da Agenda ({{ agenda.nome_agenda }})</h2>
+        <p class="page-subtitle">Evento: {{ agenda.evento_nome }}</p>
+    </div>
+    
+    <div class="d-flex gap-2 mb-3 flex-wrap menu-minimal"> 
+        <a href="{{ url_for('eventos_agendamento', evento_id=agenda.evento_id) }}"
+            class="novo">
+            <i class="ph ph-arrow-left"></i> Voltar
+        </a>
+        <button class="btn btn-success novo" data-bs-toggle="modal" data-bs-target="#modalNovoGrupo">
+            + Novo Grupo
+        </button>
+    </div>
+</div>
+
+<div class="card shadow-sm p-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-3 ">
+        <!-- FILTROS -->
+        <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+    
+            <div class="search-container mb-3">
+                <label class="form-label">Buscar</label>
+                <div style="position: relative;">
+                  <i style="position: absolute; top: 50%; left: 8px; transform: translateY(-50%);"></i>
+                  <input type="text" name="busca" class="search-input"
+                         placeholder="Buscar por nome ou grupo..."
+                         value="{{ busca }}"
+                         style="padding-left: 28px;">
+                </div>
+            </div>                          
+          
+            <button class="btn btn-primary mt-3">
+                <i class=""></i> Filtrar
+            </button>
+            <a href="{{ url_for('agenda_grupos', agenda_id=agenda.id) }}"
+            class="btn btn-warning btn-limpar mt-3">Limpar</a>            
+        </form>
+    </div>
+
+    <!-- TABELA -->
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>
+                    <a class="th-sortable"
+                       href="?sort=nome&dir={{ 'desc' if sort=='nome' and direction=='asc' else 'asc' }}">
+                        Nome
+                        {% if sort == 'nome' %}
+                            <span class="sort-indicator">{{ '↑' if direction=='asc' else '↓' }}</span>
+                        {% endif %}
+                    </a>
+                </th>
+
+                <th>Participantes</th>
+                <th>Frequencia diária</th>
+                <th>Frequencia mensal</th>
+                <th>Detalhes</th>
+
+                <th class="text-center colunatabela">Ações</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for g in grupos %}
+            <tr>
+                <td>{{ g.nome }}</td>
+            
+                <!-- Participantes -->
+                <td style="padding-left: 30px;">
+                    <a href="{{ url_for('grupo_participantes', agenda_id=agenda.id, grupo_id=g.id) }}"
+                       class="btn btn-outline-primary btn-sm plus">
+                       Incluir
+                    </a>
+                </td>
+            
+                <!-- Frequência Diária -->
+                <td style="padding-left: 40px;">
+                    <a href="{{ url_for('grupo_frequencia_diaria',
+                    agenda_id=agenda.id,
+                    grupo_id=g.id) }}"
+                    class="btn btn-outline-success btn-sm">
+                        Diária
+                    </a>
+
+                </td>
+            
+                <!-- Frequência Mensal -->
+                <td style="padding-left: 50px; ">
+                    <a href="{{ url_for('frequencia_mensal_grupo', agenda_id=agenda.id, grupo_id=g.id) }}"
+                       class="btn btn-outline-warning btn-sm">
+                        Mensal
+                    </a>
+                </td>
+            
+                <!-- Detalhes -->
+                <td style="padding-left: 10px;">
+                    <button 
+                    class="btn btn-outline-info btn-sm js-detalhes-grupo"
+                        data-url="{{ url_for('grupo_detalhes', agenda_id=agenda.id, grupo_id=g.id) }}">
+                        Detalhes
+                    </button>
+                </td>
+            
+                <!-- Ações -->
+                <td class="text-center">
+                    <div class="dropdown">
+                        <button class="action-menu-btn" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+            
+                        <ul class="dropdown-menu">
+                            <li>
+                                {% if session['usuario_tipo'] != 'Pleno' %}
+                                    <a href="#"
+                                    class="dropdown-item js-editar-grupo"
+                                    data-id="{{ g.id }}"
+                                    data-nome="{{ g.nome }}">
+                                        <i class="ph ph-note-pencil"></i> Editar
+                                    </a>
+                                {% endif %}
+                            </li>
+            
+                            <li>
+                                {% if session['usuario_tipo'] in ['Suporte', 'Master'] %}
+                                    <a href="#"
+                                    class="dropdown-item text-danger js-excluir-grupo"
+                                    data-id="{{ g.id }}"
+                                    data-nome="{{ g.nome }}">
+                                        <i class="ph ph-trash"></i> Excluir
+                                    </a>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+                </td>
+            </tr>            
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+<!-- MODAL NOVO GRUPO -->
+<div class="modal fade" id="modalNovoGrupo">
+    <div class="modal-dialog">
+        <div class="modal-content sixty-modal">
+
+            <form method="POST">
+
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ph ph-plus"></i> Novo Grupo</h5>
+                    <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label">Nome do Grupo</label>
+                        <input type="text" name="nome" class="form-control" required>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-success">Salvar</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DETALHES DO GRUPO -->
+<div class="modal fade" id="modalDetalhesGrupo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content sixty-modal">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes do Grupo</h5>
+                <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <dl class="row mb-2">
+                    <dt class="col-sm-4">Nome do Grupo</dt>
+                    <dd class="col-sm-8" id="det_grupo_nome"></dd>
+
+                    <dt class="col-sm-4">Total Participantes</dt>
+                    <dd class="col-sm-8" id="det_grupo_total"></dd>
+                </dl>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL EDITAR -->
+<div class="modal fade" id="modalEditarGrupo">
+    <div class="modal-dialog">
+        <div class="modal-content sixty-modal">
+
+            <form method="POST" id="formEditarGrupo">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Grupo</h5>
+                    <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label">Nome</label>
+                        <input type="text" id="edit_nome" name="nome" class="form-control" required>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">                    
+                    <button class="btn btn-success">Salvar Alterações</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                </div>                
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- MODAL EXCLUIR -->
+<div class="modal fade" id="modalExcluirGrupo">
+    <div class="modal-dialog">
+        <div class="modal-content sixty-modal">
+
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">Excluir Grupo</h5>
+                <button class="btn-close btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                Deseja excluir o grupo <b id="excluir_nome_grupo"></b>?
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a id="btnConfirmarExcluirGrupo" class="btn btn-danger">Excluir</a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // EDITAR GRUPO
+    document.querySelectorAll(".js-editar-grupo").forEach(el => {
+        el.addEventListener("click", e => {
+            e.preventDefault();
+
+            const id = el.dataset.id;
+            const nome = el.dataset.nome;            
+
+            document.getElementById("edit_nome").value = nome;            
+
+            document.getElementById("formEditarGrupo").action =
+                "/agenda/{{ agenda.id }}/grupos/editar/" + id;
+
+            new bootstrap.Modal(document.getElementById("modalEditarGrupo")).show();
+        });
+    });
+
+    // EXCLUIR GRUPO
+    document.querySelectorAll(".js-excluir-grupo").forEach(el => {
+        el.addEventListener("click", e => {
+            e.preventDefault();
+
+            const id = el.dataset.id;
+            const nome = el.dataset.nome;
+
+            document.getElementById("excluir_nome_grupo").innerText = nome;
+            document.getElementById("btnConfirmarExcluirGrupo").href =
+                "/agenda/{{ agenda.id }}/grupos/excluir/" + id;
+
+            new bootstrap.Modal(document.getElementById("modalExcluirGrupo")).show();
+        });
+    });
+    // DETALHES DO GRUPO
+    document.querySelectorAll(".js-detalhes-grupo").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const url = this.dataset.url;
+
+            fetch(url)
+                .then(resp => resp.json())
+                .then(data => {
+                    document.getElementById("det_grupo_nome").innerText = data.nome;
+                    document.getElementById("det_grupo_total").innerText = data.total;
+
+                    new bootstrap.Modal(document.getElementById("modalDetalhesGrupo")).show();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Erro ao carregar detalhes do grupo.");
+                });
+        });
+    });
+
+});
+</script>
+
+{% endblock %}
