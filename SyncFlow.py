@@ -22,6 +22,7 @@ import os
 import sys
 import re
 import smtplib
+from dotenv import load_dotenv
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import get_flashed_messages
@@ -75,6 +76,8 @@ try:
     from werkzeug.urls import url_parse  # type: ignore
 except Exception:
     from urllib.parse import urlparse as url_parse
+
+load_dotenv()
 
 # ==========================
 # CONFIGURAÇÃO DO APP (Flask)
